@@ -40,6 +40,8 @@ echo "*** setting up postgres roles/databases on master..."
 psql $PGCONN_STRING_POSTGRES/postgres -c "CREATE USER $USER_NAME WITH SUPERUSER PASSWORD '$USER_PASSWORD';" | egrep -v "$IGNORE_RX" 2>&1 || true
 # TOOD(citus): if kyrix is missing, we actually need to create on every node... currently, this is handled by redeploy-citus
 psql $PGCONN_STRING_POSTGRES/postgres -c "CREATE DATABASE kyrix OWNER $USER_NAME;" | egrep -v "$IGNORE_RX" 2>&1 || true
+# we use the stats table for writing pan/zoom fetch times for later analysis
+psql $PGCONN_STRING_USER/kyrix -c "CREATE TABLE IF NOT EXISTS stats (ID serial PRIMARY KEY, queryType TEXT, milliseconds NUMERIC, rowsFetched INT);"
 
 # if used, postgis is setup previously in the database - this is to support citus, which needs is initialized on every node
 # TODO: throwing errors: CREATE EXTENSION postgis_sfcgal; CREATE EXTENSION address_standardizer;CREATE EXTENSION address_standardizer_data_us;
