@@ -157,9 +157,14 @@ public class PsqlCubeSpatialIndexer extends BoundingBoxIndexer {
 
             // it was this, before but it was causing errors
             // preparedStmt.setString(transformedRow.size() + 8, "floor(" + cx + "::float / " + partitionWidth + ") ");
-            double partitionWidth = (double) (c.getW() + 1 / NUM_PARTITIONS);
+            double partitionWidth = (double) ((c.getW() + 1) / NUM_PARTITIONS);
             // System.out.println("cx is: " + cx + ", partitionWidth is: " + partitionWidth + ", and non-floored partition id is: " + ((float )cx / partitionWidth));
-            int partitionId = (int) Math.floor((float) cx / partitionWidth);
+            double partitionRatio = cx / partitionWidth;
+            int partitionId = (int) Math.floor(partitionRatio);
+            if (partitionId > (NUM_PARTITIONS - 1)) {
+                System.out.println("partitionId is too high, is: " + partitionId + " before correcting");
+                partitionId = NUM_PARTITIONS - 1;
+            }
             preparedStmt.setInt(transformedRow.size() + 8, partitionId);
 
             
