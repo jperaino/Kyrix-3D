@@ -52,8 +52,8 @@ public class Config {
         PSQL_NATIVECUBE_INDEX,
         MYSQL_SPATIAL_INDEX
     };
-
-    public static IndexingScheme indexingScheme = IndexingScheme.PSQL_NATIVEBOX_INDEX;
+    
+    public static IndexingScheme indexingScheme = IndexingScheme.PSQL_NATIVECUBE_INDEX;
 
     // underlying database
     public enum Database {

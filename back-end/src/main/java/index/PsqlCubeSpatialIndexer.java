@@ -18,7 +18,7 @@ import project.Transform;
 public class PsqlCubeSpatialIndexer extends BoundingBoxIndexer {
 
     private static PsqlCubeSpatialIndexer instance = null;
-    private static final double zIntervalLen = 1e18;
+    private static final double zIntervalLen = 1e9;
     private static final int NUM_PARTITIONS = 50;
 
     private PsqlCubeSpatialIndexer() {}
@@ -71,21 +71,25 @@ public class PsqlCubeSpatialIndexer extends BoundingBoxIndexer {
                     "PARTITION BY LIST (partition_id);";
             System.out.println(sql);
             bboxStmt.executeUpdate(sql);
+
+            // create the bbox table's partitions
+            for (int i = 0; i < NUM_PARTITIONS; i++) {
+                sql = 
+                    "CREATE UNLOGGED TABLE "
+                        + bboxTableName
+                        + "_"
+                        + i
+                        + " PARTITION OF "
+                        + bboxTableName
+                        + " FOR VALUES IN ("
+                        + i
+                        + ");";
+                System.out.println(sql);
+                bboxStmt.executeUpdate(sql);
+            }
         }
 
-        // create the bbox table's partitions
-        for (int i = 0; i < NUM_PARTITIONS; i++) {
-            sql = 
-                "CREATE UNLOGGED TABLE "
-                    + bboxTableName
-                    + "_"
-                    + i
-                    + " PARTITION OF "
-                    + bboxTableName
-                    + " FOR VALUES IN ("
-                    + i
-                    + ");";
-        }
+        
 
         // if this is an empty layer, return
         if (trans.getDb().equals("")) return;
@@ -151,8 +155,12 @@ public class PsqlCubeSpatialIndexer extends BoundingBoxIndexer {
                 throw new IllegalArgumentException(
                     "Canvas " + c.getId() + " has non-fixed width, partition failed.");
 
+            // it was this, before but it was causing errors
+            // preparedStmt.setString(transformedRow.size() + 8, "floor(" + cx + "::float / " + partitionWidth + ") ");
             double partitionWidth = (double) (c.getW() + 1 / NUM_PARTITIONS);
-            preparedStmt.setString(transformedRow.size() + 8, "floor(" + cx + "::float / " + partitionWidth + ") ");
+            // System.out.println("cx is: " + cx + ", partitionWidth is: " + partitionWidth + ", and non-floored partition id is: " + ((float )cx / partitionWidth));
+            int partitionId = (int) Math.floor((float) cx / partitionWidth);
+            preparedStmt.setInt(transformedRow.size() + 8, partitionId);
 
             
             preparedStmt.addBatch();
@@ -205,7 +213,7 @@ public class PsqlCubeSpatialIndexer extends BoundingBoxIndexer {
                                 + bboxTableName
                                 + "_"
                                 + i
-                                + "_geom_idx;";
+                                + "_v_idx;";
                 System.out.println(sql);
                 long stt = System.currentTimeMillis();
                 bboxStmt.executeUpdate(sql);
@@ -236,26 +244,42 @@ public class PsqlCubeSpatialIndexer extends BoundingBoxIndexer {
                 "cube (" + "array[" + minx + ", " + miny + ", " + minz + "], " + "array[" + maxx
                         + ", " + maxy + ", " + maxz + "])";
 
+        // String cubeOld = 
+        //         "cube (" + "array[" + oldBox.getMinx() + ", " + oldBox.getMiny() + ", " + minz + "], " + "array[" + oldBox.getMaxx()
+        //             + ", " + oldBox.getMaxy() + ", " + (getMinZ) + "])";
+
+        // final data to be returned
+        ArrayList<ArrayList<String>> ret = new ArrayList<>();
+
         // get column list string
         String colListStr = c.getLayers().get(layerId).getColStr("");
+        String bboxTableName = "bbox_" + Main.getProject().getName();
+
+        // find range of partition ids to search
+        double partitionWidth = (double) c.getW() / NUM_PARTITIONS;
+        int minPartitionId = (int) Math.floor(minx / partitionWidth);
+        int maxPartitionId = (int) Math.floor(maxx / partitionWidth);
 
         System.out.println("in psql cube spatial indexer");
-        // construct range query
-        String sql =
-                "select "
-                        + colListStr
-                        + " from bbox_"
-                        + Main.getProject().getName()
-                        + " where v && ";
-        sql += cubeNew;
-        if (predicate.length() > 0) sql += " and " + predicate + ";";
-        else sql += ";";
-        System.out.println(sql);
+        for (int i = minPartitionId; i <= maxPartitionId; i++) {
+            // construct range query
+            String sql =
+            "select "
+                    + colListStr
+                    + " from " 
+                    + bboxTableName
+                    + "_"
+                    + i
+                    + " where v && ";
+            sql += cubeNew;
+            if (predicate.length() > 0) sql += " and " + predicate + ";";
+            else sql += ";";
+            System.out.println(sql);
 
-        ArrayList<ArrayList<String>> queryResult =
-                DbConnector.getQueryResult(Config.databaseName, sql);
-
-        return queryResult;
+            ret.addAll(DbConnector.getQueryResult(Config.databaseName, sql));
+        }
+                
+        return ret;
     }
 
     @Override
