@@ -19,7 +19,7 @@ public class PsqlCubeSpatialIndexer extends BoundingBoxIndexer {
 
     private static PsqlCubeSpatialIndexer instance = null;
     private static final double zIntervalLen = 1e9;
-    private static final int NUM_PARTITIONS = 50;
+    private static final int NUM_PARTITIONS = 100;
 
     private PsqlCubeSpatialIndexer() {}
 
