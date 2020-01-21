@@ -18,7 +18,7 @@ import project.Transform;
 public class PsqlCubeSpatialIndexer extends BoundingBoxIndexer {
 
     private static PsqlCubeSpatialIndexer instance = null;
-    private static final double zIntervalLen = 1e9;
+    private static final double zIntervalLen = 1e18;
     private static final int NUM_PARTITIONS = 100;
 
     private PsqlCubeSpatialIndexer() {}
@@ -245,13 +245,15 @@ public class PsqlCubeSpatialIndexer extends BoundingBoxIndexer {
         double minz = getMinZ(c);
         double maxz = minz + zIntervalLen - 100;
 
+
         String cubeNew =
                 "cube (" + "array[" + minx + ", " + miny + ", " + minz + "], " + "array[" + maxx
                         + ", " + maxy + ", " + maxz + "])";
 
-        // String cubeOld = 
-        //         "cube (" + "array[" + oldBox.getMinx() + ", " + oldBox.getMiny() + ", " + minz + "], " + "array[" + oldBox.getMaxx()
-        //             + ", " + oldBox.getMaxy() + ", " + (getMinZ) + "])";
+        String cubeOld = 
+                "cube (" + "array[" + oldBox.getMinx() + ", " + oldBox.getMiny() + ", " + minz + "], " 
+                    + "array[" + oldBox.getMaxx()
+                    + ", " + oldBox.getMaxy() + ", " + maxz + "])";
 
         // final data to be returned
         ArrayList<ArrayList<String>> ret = new ArrayList<>();
@@ -277,6 +279,7 @@ public class PsqlCubeSpatialIndexer extends BoundingBoxIndexer {
                     + i
                     + " where v && ";
             sql += cubeNew;
+            sql += " and not (v && " + cubeOld + ")";
             if (predicate.length() > 0) sql += " and " + predicate + ";";
             else sql += ";";
             System.out.println(sql);
