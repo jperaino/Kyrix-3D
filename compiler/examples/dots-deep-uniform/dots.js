@@ -23,7 +23,7 @@ p.addCanvas(canvasZero);
 
 // dots layer
 var dotsLayer = new Layer(transforms.dotsTransform, false);
-topCanvas.addLayer(dotsLayer);
+canvasZero.addLayer(dotsLayer);
 dotsLayer.addPlacement(placements.dotsPlacement);
 dotsLayer.addRenderingFunc(renderers.dotsRendering);
 
