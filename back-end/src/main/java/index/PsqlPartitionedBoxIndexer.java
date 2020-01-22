@@ -239,7 +239,7 @@ public class PsqlPartitionedBoxIndexer extends BoundingBoxIndexer {
 
         String boxOld = 
                 "box (" + "point(" + oldBox.getMinx() + ", " + oldBox.getMiny() + "), " 
-                    + "point" + oldBox.getMaxx()
+                    + "point(" + oldBox.getMaxx()
                     + ", " + oldBox.getMaxy() + "))";
 
         // final data to be returned
