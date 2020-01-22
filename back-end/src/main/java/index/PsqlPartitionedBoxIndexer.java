@@ -316,17 +316,17 @@ public class PsqlPartitionedBoxIndexer extends BoundingBoxIndexer {
     private static String getBoxText(
             double minx, double miny, double maxx, double maxy) {
 
-        String boxText = "box(";
+        String boxText = "(";
         /*
         sql: box(point(minx, miny), point(maxx, maxy))
         */
         boxText +=
-                "point("
+                "("
                         + String.valueOf(minx)
                         + ", "
                         + String.valueOf(miny)
                         + "), "
-                        + "point("
+                        + "("
                         + String.valueOf(maxx)
                         + ", "
                         + String.valueOf(maxy)
