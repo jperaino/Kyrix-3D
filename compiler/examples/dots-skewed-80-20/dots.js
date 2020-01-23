@@ -16,7 +16,7 @@ p.addRenderingParams(renderers.renderingParams);
 
 // ================== top zoom level ===================
 var topWidth = renderers.topLevelWidth;
-topHeight = topLevelHeight;
+topHeight = renderers.topLevelHeight;
 var topCanvas = new Canvas("top", topWidth, topHeight);
 p.addCanvas(topCanvas);
 
