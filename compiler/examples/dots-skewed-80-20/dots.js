@@ -18,6 +18,7 @@ p.addRenderingParams(renderers.renderingParams);
 var topWidth = renderers.topLevelWidth;
 topHeight = renderers.topLevelHeight;
 var topCanvas = new Canvas("top", topWidth, topHeight);
+topCanvas.addAxes(renderers.dotsAxes);
 p.addCanvas(topCanvas);
 
 // dots layer
