@@ -61,7 +61,7 @@ public class PsqlPartitionedBoxQuadtreeIndexer extends BoundingBoxIndexer {
                 "cx double precision, cy double precision, " +
                 "minx double precision, miny double precision, " +
                 "maxx double precision, maxy double precision, " +
-                "geom box, partition_id int, zorder bigint) " +
+                "geom box, zorder bigint, partition_id int) " +
                 "PARTITION BY LIST (partition_id);";
         System.out.println(sql);
         bboxStmt.executeUpdate(sql);
@@ -100,8 +100,7 @@ public class PsqlPartitionedBoxQuadtreeIndexer extends BoundingBoxIndexer {
         for (int i = 0; i < colNames.size() + 6; i++) {
             insertSql += "?, ";
         }
-        insertSql += "?::box, ";
-        insertSql += "?);";
+        insertSql += "?::box, ?, ?);";
         PreparedStatement preparedStmt =
                 DbConnector.getPreparedStatement(Config.databaseName, insertSql);
         while (rs.next()) {
@@ -140,6 +139,12 @@ public class PsqlPartitionedBoxQuadtreeIndexer extends BoundingBoxIndexer {
             preparedStmt.setString(
                     transformedRow.size() + 7,  getBoxText(minx, miny, maxx, maxy));
 
+            // set zorder value
+            KyrixRow currRow = new KyrixRow(curBbox);
+            long currRowZValue = currRow.getZOrderValue();
+            preparedStmt.setLong(transformedRow.size() + 8, currRowZValue);
+
+
             // calculate partition id -- partition width into equal sized buckets
             // each partition will include all z values in that width, so it is more 
             // of a equal size slice through the canvases, only supports one pyramid right now though
@@ -157,13 +162,9 @@ public class PsqlPartitionedBoxQuadtreeIndexer extends BoundingBoxIndexer {
                 System.out.println("partitionId is too high, is: " + partitionId + " before correcting");
                 partitionId = NUM_PARTITIONS - 1;
             }
-            preparedStmt.setInt(transformedRow.size() + 8, partitionId);
+            preparedStmt.setInt(transformedRow.size() + 9, partitionId);
 
-            // set zorder value
-            KyrixRow currRow = new KyrixRow(curBbox);
-            long currRowZValue = currRow.getZOrderValue();
-            preparedStmt.setLong(transformedRow.size() + 9, currRowZValue);
-
+            
             
             preparedStmt.addBatch();
 
