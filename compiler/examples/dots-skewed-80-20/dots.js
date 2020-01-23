@@ -29,6 +29,7 @@ dotsLayer.addRenderingFunc(renderers.dotsRendering);
 
 // ================== bottom zoom level ===================
 var bottomCanvas = new Canvas("bottom", topWidth * 2, topHeight * 2);
+bottomCanvas.addAxes(renderers.dotsAxes);
 p.addCanvas(bottomCanvas);
 bottomCanvas.addLayer(dotsLayer);
 
