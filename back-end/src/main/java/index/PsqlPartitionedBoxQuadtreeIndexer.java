@@ -256,28 +256,28 @@ public class PsqlPartitionedBoxQuadtreeIndexer extends BoundingBoxIndexer {
         for (int i = 0; i < trans.getColumnNames().size(); i++)
         sql += trans.getColumnNames().get(i) + " text, ";
 
-        sql += "cx double precision, cy double precision, minx double precision, miny double precision, maxx double precision, maxy double precision, geom box, partition_id int, zorder bigint)";
+        sql += "cx double precision, cy double precision, minx double precision, miny double precision, maxx double precision, maxy double precision, geom box, zorder bigint, partition_id int);";
         System.out.println(sql);
         dropCreateStmt.executeUpdate(sql);
         dropCreateStmt.close();
 
         // copy bboxtable data to temp table
         Statement copyToTempStatement = DbConnector.getStmtByDbName(Config.databaseName);
-        String copyToTempSql = "insert into " + bboxTempTable + " select * from " + bboxTable + " order by zorder";
+        String copyToTempSql = "insert into " + bboxTempTable + " select * from " + bboxTable + " order by zorder;";
         System.out.println(copyToTempSql);
         copyToTempStatement.executeUpdate(copyToTempSql);
         copyToTempStatement.close();
 
         // delete all rows from bbox table
         Statement deleteSqlStatement = DbConnector.getStmtByDbName(Config.databaseName);
-        String deleteSql = "delete from " + bboxTable;
+        String deleteSql = "delete from " + bboxTable + ";";
         System.out.println(deleteSql);
         deleteSqlStatement.executeUpdate(deleteSql);
         deleteSqlStatement.close();
 
         // copy rows from temp table to bbox table
         Statement copyFromTempStatement = DbConnector.getStmtByDbName(Config.databaseName);
-        String copyFromTempSql = "insert into " + bboxTable + " select * from " + bboxTempTable;
+        String copyFromTempSql = "insert into " + bboxTable + " select * from " + bboxTempTable + ";";
         System.out.println(copyFromTempSql);
         copyFromTempStatement.executeUpdate(copyFromTempSql);
         copyFromTempStatement.close();   
