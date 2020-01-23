@@ -18,7 +18,7 @@ import project.Transform;
 public class PsqlCubeSpatialIndexer extends BoundingBoxIndexer {
 
     private static PsqlCubeSpatialIndexer instance = null;
-    private static final double zIntervalLen = 1e18;
+    private static final double zIntervalLen = 1e6;
     private static final int NUM_PARTITIONS = 100;
 
     private PsqlCubeSpatialIndexer() {}
@@ -350,14 +350,14 @@ public class PsqlCubeSpatialIndexer extends BoundingBoxIndexer {
                         + ", "
                         + String.valueOf(miny)
                         + ", "
-                        + String.valueOf(zCoordinate)
+                        + String.valueOf(minz)
                         + "), "
                         + "("
                         + String.valueOf(maxx)
                         + ", "
                         + String.valueOf(maxy)
                         + ", "
-                        + String.valueOf(zCoordinate)
+                        + String.valueOf(maxz)
                         + ")";
 
         return cubeText;
