@@ -61,7 +61,7 @@ public class PsqlPartitionedBoxQuadtreeIndexer extends BoundingBoxIndexer {
                 "cx double precision, cy double precision, " +
                 "minx double precision, miny double precision, " +
                 "maxx double precision, maxy double precision, " +
-                "geom box, partition_id int) " +
+                "geom box, partition_id int, zorder bigint) " +
                 "PARTITION BY LIST (partition_id);";
         System.out.println(sql);
         bboxStmt.executeUpdate(sql);
@@ -159,6 +159,11 @@ public class PsqlPartitionedBoxQuadtreeIndexer extends BoundingBoxIndexer {
             }
             preparedStmt.setInt(transformedRow.size() + 8, partitionId);
 
+            // set zorder value
+            KyrixRow currRow = new KyrixRow(curBbox);
+            long currRowZValue = currRow.getZOrderValue();
+            preparedStmt.setLong(transformedRow.size() + 9, currRowZValue);
+
             
             preparedStmt.addBatch();
 
@@ -176,6 +181,9 @@ public class PsqlPartitionedBoxQuadtreeIndexer extends BoundingBoxIndexer {
         }
         preparedStmt.close();
 
+
+        // sort according to ascending zorder
+        makeZOrderTable(bboxTableName, trans, c, layerId);
         
         /*
         sql: create index idx_tbl_box_1 on tbl_box using gist (geom);
@@ -198,31 +206,80 @@ public class PsqlPartitionedBoxQuadtreeIndexer extends BoundingBoxIndexer {
         // note: postgres automatically makes child indices for the partitions 
         // with the suffix '_geom_idx' and since CLUSTER doesn't propagate to the 
         // child indices, we have to loop through and call it a bunch of times
-        st = System.currentTimeMillis();
-        for (int i = 0; i < NUM_PARTITIONS; i++) {
-            sql =
-                    "CLUSTER "
-                            + bboxTableName
-                            + "_"
-                            + i
-                            + " USING "
-                            + bboxTableName
-                            + "_"
-                            + i
-                            + "_geom_idx;";
-            System.out.println(sql);
-            long stt = System.currentTimeMillis();
-            bboxStmt.executeUpdate(sql);
-            System.out.println(
-                    "CLUSTERing Partition #"
-                            + i
-                            + " took "
-                            + (System.currentTimeMillis() - stt) / 1000.0
-                            + "s.");
-        }
-        System.out.println(
-            "CLUSTERing in total took: " + (System.currentTimeMillis() - st) / 1000.0 + "s.");
+        // st = System.currentTimeMillis();
+        // for (int i = 0; i < NUM_PARTITIONS; i++) {
+        //     sql =
+        //             "CLUSTER "
+        //                     + bboxTableName
+        //                     + "_"
+        //                     + i
+        //                     + " USING "
+        //                     + bboxTableName
+        //                     + "_"
+        //                     + i
+        //                     + "_geom_idx;";
+        //     System.out.println(sql);
+        //     long stt = System.currentTimeMillis();
+        //     bboxStmt.executeUpdate(sql);
+        //     System.out.println(
+        //             "CLUSTERing Partition #"
+        //                     + i
+        //                     + " took "
+        //                     + (System.currentTimeMillis() - stt) / 1000.0
+        //                     + "s.");
+        // }
+        // System.out.println(
+        //     "CLUSTERing in total took: " + (System.currentTimeMillis() - st) / 1000.0 + "s.");
+
         bboxStmt.close();
+    }
+
+    public void makeZOrderTable(String bboxTable, Transform trans, Canvas c, int layerId) throws Exception {
+        // create new temp table with same fields as bbox table
+        //   "create table bboxtabletemp(.....);"
+        // copy data from bboxTable to new temp table
+        //   "insert into bbox_temp_table select * from bbox_table order by zorder;"
+        // delete rows from original table
+        //   "delete from bbox_table;"
+        // copy data from temp table back into original table
+        //   "insert into bbox_table select * from bbox_temp_table";
+
+        // create new temp table from bboxTable
+        String bboxTempTable = bboxTable +  "_temp";
+        Statement dropCreateStmt = DbConnector.getStmtByDbName(Config.databaseName);
+        String sql = "drop table if exists " + bboxTempTable + ";";
+        System.out.println(sql);
+        dropCreateStmt.executeUpdate(sql);
+
+        sql = "CREATE TABLE " + bboxTempTable + " (";
+        for (int i = 0; i < trans.getColumnNames().size(); i++)
+        sql += trans.getColumnNames().get(i) + " text, ";
+
+        sql += "cx double precision, cy double precision, minx double precision, miny double precision, maxx double precision, maxy double precision, geom box, partition_id int, zorder bigint)";
+        System.out.println(sql);
+        dropCreateStmt.executeUpdate(sql);
+        dropCreateStmt.close();
+
+        // copy bboxtable data to temp table
+        Statement copyToTempStatement = DbConnector.getStmtByDbName(Config.databaseName);
+        String copyToTempSql = "insert into " + bboxTempTable + " select * from " + bboxTable + " order by zorder";
+        System.out.println(copyToTempSql);
+        copyToTempStatement.executeUpdate(copyToTempSql);
+        copyToTempStatement.close();
+
+        // delete all rows from bbox table
+        Statement deleteSqlStatement = DbConnector.getStmtByDbName(Config.databaseName);
+        String deleteSql = "delete from " + bboxTable;
+        System.out.println(deleteSql);
+        deleteSqlStatement.executeUpdate(deleteSql);
+        deleteSqlStatement.close();
+
+        // copy rows from temp table to bbox table
+        Statement copyFromTempStatement = DbConnector.getStmtByDbName(Config.databaseName);
+        String copyFromTempSql = "insert into " + bboxTable + " select * from " + bboxTempTable;
+        System.out.println(copyFromTempSql);
+        copyFromTempStatement.executeUpdate(copyFromTempSql);
+        copyFromTempStatement.close();   
     }
 
     @Override
