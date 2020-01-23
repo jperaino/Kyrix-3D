@@ -65,6 +65,9 @@ public abstract class Indexer implements Serializable {
                         else if (Config.indexingScheme
                                 == Config.IndexingScheme.PSQL_PARTITIONED_BOX_INDEX)
                             indexer = PsqlPartitionedBoxIndexer.getInstance();
+                        else if (Config.indexingScheme
+                                == Config.IndexingScheme.PSQL_PARTITIONED_QUAD_INDEX)
+                            indexer = PsqlPartitionedBoxQuadtreeIndexer.getInstance();
                         else
                             throw new Exception(
                                     "Index type "

@@ -52,9 +52,10 @@ public class Config {
         PSQL_NATIVECUBE_INDEX,
         MYSQL_SPATIAL_INDEX,
         PSQL_PARTITIONED_BOX_INDEX,
+        PSQL_PARTITIONED_QUAD_INDEX,
     };
     
-    public static IndexingScheme indexingScheme = IndexingScheme.PSQL_PARTITIONED_BOX_INDEX;
+    public static IndexingScheme indexingScheme = IndexingScheme.PSQL_PARTITIONED_QUAD_INDEX;
 
     // underlying database
     public enum Database {
