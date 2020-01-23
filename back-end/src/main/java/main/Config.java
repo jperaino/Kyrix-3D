@@ -55,7 +55,7 @@ public class Config {
         PSQL_PARTITIONED_QUAD_INDEX,
     };
     
-    public static IndexingScheme indexingScheme = IndexingScheme.PSQL_PARTITIONED_QUAD_INDEX;
+    public static IndexingScheme indexingScheme = IndexingScheme.PSQL_PARTITIONED_BOX_INDEX;
 
     // underlying database
     public enum Database {
