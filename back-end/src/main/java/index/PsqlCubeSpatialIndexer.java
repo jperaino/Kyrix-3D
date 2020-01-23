@@ -18,7 +18,7 @@ import project.Transform;
 public class PsqlCubeSpatialIndexer extends BoundingBoxIndexer {
 
     private static PsqlCubeSpatialIndexer instance = null;
-    private static final double zIntervalLen = 1e18;
+    private static final double zIntervalLen = 1e5;
     private static final int NUM_PARTITIONS = 100;
 
     private PsqlCubeSpatialIndexer() {}
@@ -247,13 +247,11 @@ public class PsqlCubeSpatialIndexer extends BoundingBoxIndexer {
 
 
         String cubeNew =
-                "cube (" + "array[" + minx + ", " + miny + ", " + minz + "], " + "array[" + maxx
-                        + ", " + maxy + ", " + maxz + "])";
+                "cube (" + minx + ", " + miny + ", " + maxx + ", " + maxy + ", " + minz + ")";
 
         String cubeOld = 
-                "cube (" + "array[" + oldBox.getMinx() + ", " + oldBox.getMiny() + ", " + minz + "], " 
-                    + "array[" + oldBox.getMaxx()
-                    + ", " + oldBox.getMaxy() + ", " + maxz + "])";
+                "cube (" + oldBox.getMinx() + ", " + oldBox.getMiny() + ", " + oldBox.getMaxx()
+                + ", " + oldBox.getMaxy() + ", " + minz + ")";
 
         // final data to be returned
         ArrayList<ArrayList<String>> ret = new ArrayList<>();
@@ -338,26 +336,23 @@ public class PsqlCubeSpatialIndexer extends BoundingBoxIndexer {
 
         String cubeText = "";
         /*
-        sql: insert into tbl_cube select id, cube ( array[minx, miny, z], array[maxx, maxy, z])
+        sql: insert into tbl_cube select id, cube (minx, miny, maxx, maxy, z)
         */
         double minz = getMinZ(c);
-        double maxz = minz + zIntervalLen - 100;
-        Random r = new Random();
-        double zCoordinate = minz + (maxz - minz) * r.nextDouble();
+        // double maxz = minz + zIntervalLen - 100;
+        // Random r = new Random();
+        // double zCoordinate = minz + (maxz - minz) * r.nextDouble();
         cubeText +=
                 "("
                         + String.valueOf(minx)
                         + ", "
                         + String.valueOf(miny)
                         + ", "
-                        + String.valueOf(zCoordinate)
-                        + "), "
-                        + "("
                         + String.valueOf(maxx)
                         + ", "
                         + String.valueOf(maxy)
                         + ", "
-                        + String.valueOf(zCoordinate)
+                        + String.valueOf(minz)
                         + ")";
 
         return cubeText;
