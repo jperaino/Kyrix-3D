@@ -18,7 +18,7 @@ import project.Transform;
 public class PsqlCubeSpatialIndexer extends BoundingBoxIndexer {
 
     private static PsqlCubeSpatialIndexer instance = null;
-    private static final double zIntervalLen = 1e12;
+    private static final double zIntervalLen = 1e8;
     private static final int NUM_PARTITIONS = 100;
 
     private PsqlCubeSpatialIndexer() {}
