@@ -267,7 +267,7 @@ public class PsqlPartitionedBoxIndexer extends BoundingBoxIndexer {
 
         // get column list string
         String colListStr = c.getLayers().get(layerId).getColStr("");
-        String bboxTableName = "bbox_" + Main.getProject().getName() + "_" + c.getId() + "layer" + layerId;
+        String bboxTableName = "bbox_" + Main.getProject().getName();
 
         // find range of partition ids to search
         double partitionWidth = (double) c.getW() / NUM_PARTITIONS;
