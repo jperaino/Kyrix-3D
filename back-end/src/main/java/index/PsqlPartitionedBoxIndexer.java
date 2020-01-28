@@ -18,7 +18,7 @@ import project.Transform;
 public class PsqlPartitionedBoxIndexer extends BoundingBoxIndexer {
 
     private static PsqlPartitionedBoxIndexer instance = null;
-    private static final int NUM_PARTITIONS = 10;
+    private static final int NUM_PARTITIONS = 100;
 
     private PsqlPartitionedBoxIndexer() {}
 
