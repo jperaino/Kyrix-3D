@@ -10,7 +10,7 @@ $PSQL $PGCONN -t -c "drop table if exists dots_skewed_80_20 cascade; create tabl
 
 for i in {1..80}; do
     echo `date +%s`": loading dots_skewed_80_20 data #$i of 100 (skewed to small area)..."
-    $PSQL $PGCONN -q -t -c "insert into dots_skewed_80_20 (id,w,h, citus_distribution_id) select id, (random()*400000)::bigint, (random()*500000)::bigint, (random()*2147483648*2.0 - 2147483648)::int from generate_series(1,10000*$SCALE) id;"
+    $PSQL $PGCONN -q -t -c "insert into dots_skewed_80_20 (id,w,h, citus_distribution_id) select id, (random()*200000)::bigint, (random()*200000)::bigint, (random()*2147483648*2.0 - 2147483648)::int from generate_series(1,10000*$SCALE) id;"
 done
 
 for i in {81..100}; do

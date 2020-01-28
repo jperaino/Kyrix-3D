@@ -15,8 +15,8 @@ var p = new Project("dots_skewed_80_20", "../../../config.txt");
 p.addRenderingParams(renderers.renderingParams);
 
 // ================== top zoom level ===================
-var topWidth = renderers.topLevelWidth;
-topHeight = renderers.topLevelHeight;
+var topWidth = 1000000;
+topHeight = 1000000;
 var topCanvas = new Canvas("top", topWidth, topHeight);
 topCanvas.addAxes(renderers.dotsAxes);
 p.addCanvas(topCanvas);
