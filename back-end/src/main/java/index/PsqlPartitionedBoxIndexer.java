@@ -18,7 +18,7 @@ import project.Transform;
 public class PsqlPartitionedBoxIndexer extends BoundingBoxIndexer {
 
     private static PsqlPartitionedBoxIndexer instance = null;
-    private static final int NUM_PARTITIONS = 100;
+    private static final int NUM_PARTITIONS = 10;
 
     private PsqlPartitionedBoxIndexer() {}
 
@@ -190,26 +190,12 @@ public class PsqlPartitionedBoxIndexer extends BoundingBoxIndexer {
                     + bboxTableName
                     + " on "
                     + bboxTableName
-                    + " using gist (geom);";
+                    + " using gist (geom, canvasid);";
             System.out.println(sql);
             long st = System.currentTimeMillis();
             bboxStmt.executeUpdate(sql);
             System.out.println(
                 "Creating rtree spatial index took: "
-                    + (System.currentTimeMillis() - st) / 1000.0
-                    + "s.");
-
-            // create B-tree index on canvasid column
-            sql = "create index canvas_idx_" 
-                    + bboxTableName 
-                    + " on " 
-                    + bboxTableName 
-                    + "(canvasid);";
-            System.out.println(sql);
-            st = System.currentTimeMillis();
-            bboxStmt.executeUpdate(sql);
-            System.out.println(
-                "Creating canvasid b-tree index took: "
                     + (System.currentTimeMillis() - st) / 1000.0
                     + "s.");
 
@@ -228,7 +214,7 @@ public class PsqlPartitionedBoxIndexer extends BoundingBoxIndexer {
                                 + bboxTableName
                                 + "_"
                                 + i
-                                + "_geom_idx;";
+                                + "_geom_canvasid_idx;";
                 System.out.println(sql);
                 long stt = System.currentTimeMillis();
                 bboxStmt.executeUpdate(sql);
