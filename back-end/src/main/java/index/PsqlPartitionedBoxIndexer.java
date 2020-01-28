@@ -46,6 +46,10 @@ public class PsqlPartitionedBoxIndexer extends BoundingBoxIndexer {
         // put all canvases and layers in same table
         String bboxTableName = "bbox_" + Main.getProject().getName();
 
+        // create extension if it doesn't exist
+        String extSql = "create extension if not exists btree_gist;";
+        bboxStmt.executeUpdate(extSql);
+
         // drop table if exists -- NO DON'T WANT TO DROP TABLE NOW ONE BIG TABLE
         // String sql = "drop table if exists " + bboxTableName + ";";
         // bboxStmt.executeUpdate(sql);
