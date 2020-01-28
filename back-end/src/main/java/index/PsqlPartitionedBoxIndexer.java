@@ -195,7 +195,21 @@ public class PsqlPartitionedBoxIndexer extends BoundingBoxIndexer {
             long st = System.currentTimeMillis();
             bboxStmt.executeUpdate(sql);
             System.out.println(
-                "Creating spatial indexes took: "
+                "Creating rtree spatial index took: "
+                    + (System.currentTimeMillis() - st) / 1000.0
+                    + "s.");
+
+            // create B-tree index on canvasid column
+            sql = "create index canvas_idx_" 
+                    + bboxTableName 
+                    + " on " 
+                    + bboxTableName 
+                    + "(canvasid);";
+            System.out.println(sql);
+            st = System.currentTimeMillis();
+            bboxStmt.executeUpdate(sql);
+            System.out.println(
+                "Creating canvasid b-tree index took: "
                     + (System.currentTimeMillis() - st) / 1000.0
                     + "s.");
 
@@ -237,6 +251,7 @@ public class PsqlPartitionedBoxIndexer extends BoundingBoxIndexer {
 
         double minx = newBox.getMinx(), miny = newBox.getMiny();
         double maxx = newBox.getMaxx(), maxy = newBox.getMaxy();
+        int canvasNum = getCanvasNum(c);
 
         String boxNew =
                 "box (" + "point(" + minx + ", " + miny + "), " + "point(" + maxx
@@ -271,7 +286,7 @@ public class PsqlPartitionedBoxIndexer extends BoundingBoxIndexer {
                     + i
                     + " where geom && ";
             sql += boxNew;
-            sql += " and not (geom && " + boxOld + ")";
+            sql += " and not (geom && " + boxOld + ") and canvasid = " + canvasNum;
             if (predicate.length() > 0) sql += " and " + predicate + ";";
             else sql += ";";
             System.out.println(sql);
