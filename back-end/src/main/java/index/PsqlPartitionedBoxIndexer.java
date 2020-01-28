@@ -62,7 +62,7 @@ public class PsqlPartitionedBoxIndexer extends BoundingBoxIndexer {
                     "cx double precision, cy double precision, " +
                     "minx double precision, miny double precision, " +
                     "maxx double precision, maxy double precision, " +
-                    "geom box, canvasid int, partition_id int) " +
+                    "geom box, canvasid int8, partition_id int) " +
                     "PARTITION BY LIST (partition_id);";
             System.out.println(sql);
             bboxStmt.executeUpdate(sql);
