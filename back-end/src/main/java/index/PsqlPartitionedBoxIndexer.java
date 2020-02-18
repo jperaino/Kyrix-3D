@@ -194,7 +194,7 @@ public class PsqlPartitionedBoxIndexer extends BoundingBoxIndexer {
                     + bboxTableName
                     + " on "
                     + bboxTableName
-                    + " using gist (geom, canvasid);";
+                    + " using gist (canvasid, geom);";
             System.out.println(sql);
             long st = System.currentTimeMillis();
             bboxStmt.executeUpdate(sql);
