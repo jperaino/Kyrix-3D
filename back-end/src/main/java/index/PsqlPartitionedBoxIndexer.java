@@ -218,7 +218,7 @@ public class PsqlPartitionedBoxIndexer extends BoundingBoxIndexer {
                                 + bboxTableName
                                 + "_"
                                 + i
-                                + "_geom_canvasid_idx;";
+                                + "_canvasid_geom_idx;";
                 System.out.println(sql);
                 long stt = System.currentTimeMillis();
                 bboxStmt.executeUpdate(sql);
