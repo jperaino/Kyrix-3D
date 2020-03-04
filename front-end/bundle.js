@@ -1,18 +1,12 @@
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
 // main.js 
 
-// import * as THREE from '/node_modules/three/build/three.module.js'
-// import { OrbitControls } from '/node_modules/three/examples/jsm/controls/OrbitControls.js'
-// import { STLLoader } from '/node_modules/three/examples/jsm/loaders/STLLoader.js'
-
 const THREE = require('three')
 const OrbitControls = require('three-orbitcontrols')
 const STLLoader = require('three-stl-loader')(THREE)
 
-// var THREE = require('three');
-
 // Properties ===================================================================
-console.log("Loaded main.js")
+console.log("Loaded main.js today")
 
 var csv_file_path = '../data/Kyrix_Trial_200211.csv'
 
@@ -21,8 +15,11 @@ var current_zoom = "building"
 var objects = []
 
 var building_fps = [];
+var building_k_objs = [];
 var level_fps = [];
+var level_k_objs = [];
 var room_fps = [];
+var room_k_objs = [];
 
 var camera, controls, scene, renderer, raycaster;
 var mouse = new THREE.Vector2(), INTERSECTED;
@@ -42,12 +39,25 @@ function load_csv(csv_file_path) {
 
 	// Read CSV and sort rows into appropriate arrays
 	d3.csv(csv_file_path, function(data) {
+
+		var k_obj = {
+			level: data.level,
+			building: data.building,
+			room: data.room,
+			stl_fp: data.stl_fp,
+			infection_count: data.infection_count
+		}
+
+
 		if (data.level === '') {
 			building_fps.push(data.stl_fp)
+			building_k_objs.push(k_obj)
 		} else if (data.room === '') {
 			level_fps.push(data.stl_fp)
+			level_k_objs.push(k_obj)
 		} else {
 			room_fps.push(data.stl_fp)
+			room_k_objs.push(k_obj)
 		}
 	})
 }
@@ -150,6 +160,8 @@ function onDocumentMouseMove(event){
 
 
 function onDocumentMouseClick(event){
+	console.log("Here... 2")
+	console.log(globalVar.serverAddr)
 	/* Handles mouse click events for three.js raycasting */
 	event.preventDefault();
 	raycaster.setFromCamera(mouse, camera);
@@ -198,26 +210,82 @@ function loadSTLs(layer) {
 	switch(layer) {
 		case 'building':
 			files = building_fps;
+			k_objs = building_k_objs;
 			break;
 		case 'levels':
 			files = level_fps;
+			k_objs = level_k_objs;
 			break;
 		case 'rooms':
 			files = room_fps;
+			k_objs = room_k_objs;
 			break;
 	}
 
 	// Iterate over selected stl files
-	files.forEach(function(fp){
-		// console.log(fp)
-		// loadStl('/data/stl/' + fp)
-		loadStl('/data/stls-complex/' + fp)
+	k_objs.forEach(function(k_obj){
+		loadStl_k_obj(k_obj)
 	})
+
+
+	// // Iterate over selected stl files
+	// files.forEach(function(fp){
+	// 	loadStl('/data/stls-complex/' + fp) // DEBUG HERE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	// })
 }
+
+
+function pickHex(color1, color2, weight) {
+    var w1 = weight;
+    var w2 = 1 - w1;
+    var rgb = [Math.round(color1[0] * w1 + color2[0] * w2),
+        Math.round(color1[1] * w1 + color2[1] * w2),
+        Math.round(color1[2] * w1 + color2[2] * w2)];
+    return rgb;
+}
+
+
+
+function loadStl_k_obj(k_obj) {
+
+	fp = '/data/stls-complex/' + k_obj.stl_fp
+
+	var loader = new STLLoader();
+	// loader.load('/data/stl/ALL.stl', function (geometry) {
+	loader.load(fp, function (geometry) {
+		
+		color = 0xffffff;
+
+		if (k_obj.infection_count != 0) {
+			color = 0xFF0000;
+		}
+
+		var material = new THREE.MeshPhongMaterial( { color: color, specular: 0x111111, shininess: 0, flatShading: false} );
+		// var material = new THREE.MeshPhongMaterial( { flatShading: true } );
+		var mesh = new THREE.Mesh( geometry, material );
+
+		console.log(k_obj.level)
+		// mesh.position.set( 0, - 0.25, 0.6 );
+		mesh.position.set( 0, k_obj.level * 100 * .5 , 0 );
+		mesh.rotation.set( - Math.PI / 2, 0, - Math.PI / 2 );
+		mesh.scale.set( 0.5, 0.5, 0.5 );
+		// mesh.scale.set( 1,1,1 );
+
+		mesh.castShadow = true;
+		mesh.receiveShadow = true;
+
+		scene.add( mesh );
+		objects.push(mesh.uuid)
+
+	} );
+}
+
+
 
 
 function loadStl(fp) {
 
+	console.log("not working")
 	var loader = new STLLoader();
 	// loader.load('/data/stl/ALL.stl', function (geometry) {
 	loader.load(fp, function (geometry) {
@@ -279,7 +347,7 @@ function switchToLayer(layer) {
 
 			break;
 		case "levels":
-			tweenCamera(camera, [6801, 1769, 7331], 2000)
+			tweenCamera(camera, [6801, 1769, 7331], 1000)
 
 			break;
 		default: 
@@ -329,6 +397,7 @@ function init() {
 	init_three_js();
 	loadSTLs('building')
 
+
 }
 
 
@@ -336,6 +405,8 @@ function init() {
 
 init();
 animate();
+
+
 
 
 },{"three":4,"three-orbitcontrols":2,"three-stl-loader":3}],2:[function(require,module,exports){
@@ -51000,7 +51071,7 @@ THREE.MapControls.prototype.constructor = THREE.MapControls;
 		},
 		addAttribute: function ( name, attribute ) {
 
-			// console.warn( 'THREE.BufferGeometry: .addAttribute() has been renamed to .setAttribute().' );
+			console.warn( 'THREE.BufferGeometry: .addAttribute() has been renamed to .setAttribute().' );
 
 			if ( ! ( attribute && attribute.isBufferAttribute ) && ! ( attribute && attribute.isInterleavedBufferAttribute ) ) {
 
