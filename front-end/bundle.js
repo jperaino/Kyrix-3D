@@ -171,16 +171,16 @@ function onDocumentMouseClick(event){
 		INTERSECTED = intersects[0].object
 		onGeometryClick(INTERSECTED.uuid)
 
-		switch (current_zoom) {
-			case "building":
-				switchToLayer("levels");
-				break; 
-			case "levels":
-				switchToLayer("rooms");
-				break;
-			default:
-				switchToLayer("building");
-		}
+		// switch (current_zoom) {
+		// 	case "building":
+		// 		switchToLayer("levels");
+		// 		break; 
+		// 	case "levels":
+		// 		switchToLayer("rooms");
+		// 		break;
+		// 	default:
+		// 		switchToLayer("building");
+		// }
 	}
 }
 
