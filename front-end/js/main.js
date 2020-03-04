@@ -1,14 +1,8 @@
 // main.js 
 
-// import * as THREE from '/node_modules/three/build/three.module.js'
-// import { OrbitControls } from '/node_modules/three/examples/jsm/controls/OrbitControls.js'
-// import { STLLoader } from '/node_modules/three/examples/jsm/loaders/STLLoader.js'
-
 const THREE = require('three')
 const OrbitControls = require('three-orbitcontrols')
 const STLLoader = require('three-stl-loader')(THREE)
-
-// var THREE = require('three');
 
 // Properties ===================================================================
 console.log("Loaded main.js")
@@ -149,6 +143,8 @@ function onDocumentMouseMove(event){
 
 
 function onDocumentMouseClick(event){
+	console.log("Here...")
+	console.log(globalVar.serverAddr)
 	/* Handles mouse click events for three.js raycasting */
 	event.preventDefault();
 	raycaster.setFromCamera(mouse, camera);
@@ -278,7 +274,7 @@ function switchToLayer(layer) {
 
 			break;
 		case "levels":
-			tweenCamera(camera, [6801, 1769, 7331], 2000)
+			tweenCamera(camera, [6801, 1769, 7331], 1000)
 
 			break;
 		default: 
@@ -328,6 +324,7 @@ function init() {
 	init_three_js();
 	loadSTLs('building')
 
+
 }
 
 
@@ -337,28 +334,4 @@ init();
 animate();
 
 
-$.ajax({
-    type: "GET",
-    url: globalVar.serverAddr + "/canvas",
-    data: postData,
-    success: function(data) {
-
-    	console.log(data)
-        // gvd.curCanvas = JSON.parse(data).canvas;
-        // if (gvd.curCanvas.w < gvd.viewportWidth)
-        //     gvd.curCanvas.w = gvd.viewportWidth;
-        // if (gvd.curCanvas.h < gvd.viewportHeight)
-        //     gvd.curCanvas.h = gvd.viewportHeight;
-        // gvd.curStaticData = JSON.parse(data).staticData;
-        // setupLayerLayouts(viewId);
-
-        // // insert into cache
-        // if (!(postData in globalVar.cachedCanvases)) {
-        //     globalVar.cachedCanvases[postData] = {};
-        //     globalVar.cachedCanvases[postData].canvasObj = gvd.curCanvas;
-        //     globalVar.cachedCanvases[postData].staticData =
-        //         gvd.curStaticData;
-        // }
-    }
-});
 

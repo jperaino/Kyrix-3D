@@ -1,4 +1,4 @@
-console.log("loaded test.js")
+console.log("loaded pageOnLoad.js")
 console.log(globalVar.serverAddr)
 
 function pageOnLoad(serverAddr) {
