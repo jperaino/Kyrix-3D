@@ -6,9 +6,11 @@ function pageOnLoad() {
     $.ajax({
         type: "GET",
         url: "/canvas",
-        data: "id=teamtimeline&predicate0=&predicate1=&predicate2=",
+        // data: "id=teamtimeline&predicate0=&predicate1=&predicate2=",
+        data: "id=mgh&predicate0=&predicate1=&predicate2=",
         success: function(data) {
-            console.log(JSON.parse(data).staticData);
+        	x = JSON.parse(data).staticData[0]
+            console.log(x);
         }
     });
 }
