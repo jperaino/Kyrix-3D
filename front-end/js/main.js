@@ -12,6 +12,7 @@ var csv_file_path = '../data/Kyrix_Trial_200211.csv'
 var current_zoom = "building"
 
 var objects = []
+var uuids = {}
 
 var building_fps = [];
 var building_k_objs = [];
@@ -187,7 +188,16 @@ function onDocumentMouseClick(event){
 function onGeometryClick(uuid) {
 	/* Performs actions to be performed when a geometry is clicked */
 	console.log(uuid)
-	$("#lower-console").text(uuid)
+	k_obj = uuids[uuid]
+	building = k_obj['building']
+	level = k_obj['level']
+	
+	text = `Building: ${building} | Level: ${level}`
+
+
+
+
+	$("#lower-console").text(text)
 }
 
 
@@ -274,7 +284,7 @@ function loadStl_k_obj(k_obj) {
 		mesh.receiveShadow = true;
 
 		scene.add( mesh );
-		objects.push(mesh.uuid)
+		uuids[mesh.uuid] = k_obj;
 
 	} );
 }
@@ -282,36 +292,36 @@ function loadStl_k_obj(k_obj) {
 
 
 
-function loadStl(fp) {
+// function loadStl(fp) {
 
-	console.log("not working")
-	var loader = new STLLoader();
-	// loader.load('/data/stl/ALL.stl', function (geometry) {
-	loader.load(fp, function (geometry) {
+// 	console.log("not working")
+// 	var loader = new STLLoader();
+// 	// loader.load('/data/stl/ALL.stl', function (geometry) {
+// 	loader.load(fp, function (geometry) {
 		
-		// var material = new THREE.MeshPhongMaterial( { color: 0xffffff, specular: 0x111111, shininess: 0, flatShading: false} );
-		var material = new THREE.MeshPhongMaterial( { flatShading: true } );
-		var mesh = new THREE.Mesh( geometry, material );
+// 		// var material = new THREE.MeshPhongMaterial( { color: 0xffffff, specular: 0x111111, shininess: 0, flatShading: false} );
+// 		var material = new THREE.MeshPhongMaterial( { flatShading: true } );
+// 		var mesh = new THREE.Mesh( geometry, material );
 
-		mesh.position.set( 0, - 0.25, 0.6 );
-		mesh.rotation.set( - Math.PI / 2, 0, - Math.PI / 2 );
-		mesh.scale.set( 0.5, 0.5, 0.5 );
+// 		mesh.position.set( 0, - 0.25, 0.6 );
+// 		mesh.rotation.set( - Math.PI / 2, 0, - Math.PI / 2 );
+// 		mesh.scale.set( 0.5, 0.5, 0.5 );
 
-		mesh.castShadow = true;
-		mesh.receiveShadow = true;
+// 		mesh.castShadow = true;
+// 		mesh.receiveShadow = true;
 
-		scene.add( mesh );
-		objects.push(mesh.uuid)
+// 		scene.add( mesh );
+// 		objects.push(mesh.uuid)
 
-	} );
-}
+// 	} );
+// }
 
 
 
 function destroyEverything(){
 	/* Destroy and dispose all objects in objects */
-	while (objects.length > 0) {
-		let uuid = objects.pop();
+	while (uuids.length > 0) {
+		let uuid = uuids.pop().key();
 		// console.log(uuid)
 		const object = scene.getObjectByProperty('uuid', uuid);
 		object.geometry.dispose();
@@ -376,15 +386,51 @@ function updateCameraLabels(camera, controls) {
 // PostgreSQL Methods ===================================================================
 
 
-function testPSQL(){
+function objectFromPSQL(data) {
+	/* Creates an object from a row of PSQL data */
+
+	var object = {
+		level: data.level,
+		building: data.building,
+		room: data.room,
+		stl_fp: data.stl_fp,
+		infection_count: data.infection_count,
+		kind: data.kind,
+		outline: data.outline
+	}
+
+	return object
+}
+
+
+
+function loadAllLevels() {
 
 	$.ajax({
-		type: "GET",
-		
-	})
+        type: "GET",
+        url: "/canvas",
+        data: "id=mgh&predicate0=&predicate1=&predicate2=",
+        success: function(data) {
+        	x = JSON.parse(data).staticData[0]
+
+            for (var i = 0; i < x.length; i++) {
+			    obj = objectFromPSQL(x[i])
+			    loadStl_k_obj(obj)
+			    objects.push(obj)
+			}
+
+        }
+    });
 
 }
 
+
+
+
+
+function pageOnLoad() {
+	console.log("ok")
+}
 
 
 // Main Functions ===================================================================
@@ -395,6 +441,12 @@ function init() {
 	load_csv(csv_file_path);
 	init_three_js();
 	loadSTLs('building')
+
+	loadAllLevels();
+
+
+
+
 
 
 }

@@ -1,24 +1,46 @@
 const Transform = require("../../src/Transform").Transform;
 
-var teamLogoTransform = new Transform(
-    "select * from teams;",
-    "nba",
-    function(row) {
-        var id = parseInt(row[0]);
-        var y = Math.floor(id / 6);
-        var x = id - y * 6;
-        var ret = [];
-        ret.push(row[0]);
-        ret.push((x * 2 + 1) * 80);
-        ret.push((y * 2 + 1) * 80 + 100);
-        ret.push(row[1]);
-        ret.push(row[2]);
-        ret.push(row[3]);
-        ret.push(row[4]);
 
-        return Java.to(ret, "java.lang.String[]");
-    },
-    ["id", "x", "y", "team_id", "city", "name", "abbr"],
+// var mghTransform = new Transform(
+//     "select * from geometries",
+//     "mgh",
+//     // function(row) {
+//     //     var ret = [];
+//     //     ret.push(row[1]);
+//     //     ret.push(row[2]);
+//     //     ret.push(row[3]);
+//     //     ret.push(row[4]);
+
+//     //     return Java.to(ret, "java.lang.String[]");
+//     // }
+//     "",
+//     "",
+//     true
+// );
+
+
+
+var teamLogoTransform = new Transform(
+    "select * from geometries;",
+    "mgh",
+    "",
+    // function(row) {
+    //     var id = parseInt(row[0]);
+    //     var y = Math.floor(id / 6);
+    //     var x = id - y * 6;
+    //     var ret = [];
+    //     ret.push(row[0]);
+    //     ret.push((x * 2 + 1) * 80);
+    //     ret.push((y * 2 + 1) * 80 + 100);
+    //     ret.push(row[1]);
+    //     ret.push(row[2]);
+    //     ret.push(row[3]);
+    //     ret.push(row[4]);
+
+    //     return Java.to(ret, "java.lang.String[]");
+    // },
+    // ["id", "x", "y", "team_id", "city", "name", "abbr"],
+    [""],
     true
 );
 

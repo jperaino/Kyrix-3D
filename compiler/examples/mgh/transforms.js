@@ -1,7 +1,7 @@
 const Transform = require("../../src/Transform").Transform;
 
 var mghTransform = new Transform(
-    "select * from geometries;",
+    "SELECT * FROM geoms WHERE kind = 'Level';",
     "mgh",
     "",
     [],

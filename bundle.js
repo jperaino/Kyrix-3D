@@ -51071,7 +51071,7 @@ THREE.MapControls.prototype.constructor = THREE.MapControls;
 		},
 		addAttribute: function ( name, attribute ) {
 
-			console.warn( 'THREE.BufferGeometry: .addAttribute() has been renamed to .setAttribute().' );
+			// console.warn( 'THREE.BufferGeometry: .addAttribute() has been renamed to .setAttribute().' );
 
 			if ( ! ( attribute && attribute.isBufferAttribute ) && ! ( attribute && attribute.isInterleavedBufferAttribute ) ) {
 

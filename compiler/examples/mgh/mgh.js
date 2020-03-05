@@ -22,6 +22,21 @@ var mghPackLayer = new Layer(transforms.mghTransform, true);
 mghCanvas.addLayer(mghPackLayer);
 mghPackLayer.addRenderingFunc(renderers.mghPackRendering);
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // ================== Views ===================
 var view = new View("mgh", 0, 0, 1000, 1000);
 p.addView(view);
