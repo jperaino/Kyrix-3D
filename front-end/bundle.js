@@ -321,14 +321,24 @@ function loadStl_k_obj(k_obj) {
 
 function destroyEverything(){
 	/* Destroy and dispose all objects in objects */
-	while (uuids.length > 0) {
-		let uuid = uuids.pop().key();
-		// console.log(uuid)
-		const object = scene.getObjectByProperty('uuid', uuid);
+	console.log("Destroy Everything")
+	
+	$.each(uuids, function (k, v) {
+		console.log(k)
+		const object = scene.getObjectByProperty('uuid', k);
 		object.geometry.dispose();
 		object.material.dispose();
 		scene.remove(object);
-	}
+	});
+
+	// while (uuids.length > 0) {
+	// 	let uuid = uuids.pop().key();
+	// 	// console.log(uuid)
+	// 	const object = scene.getObjectByProperty('uuid', uuid);
+	// 	object.geometry.dispose();
+	// 	object.material.dispose();
+	// 	scene.remove(object);
+	// }
 }
 
 
@@ -349,7 +359,7 @@ function switchToLayer(layer) {
 	current_zoom = layer;
 	// console.log(layer.length);
 	destroyEverything()
-	loadSTLs(layer);
+	// loadSTLs(layer);
 
 	switch(layer) {
 		case "building":
