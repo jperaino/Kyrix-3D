@@ -14,7 +14,6 @@ var current_zoom = "building"
 var objects = []
 var uuids = {}
 
-var building_fps = [];
 var building_k_objs = [];
 var level_fps = [];
 var level_k_objs = [];
@@ -148,8 +147,9 @@ function onGeometryClick(uuid) {
 	k_obj = uuids[uuid]
 	building = k_obj['building']
 	level = k_obj['level']
+	room = k_obj['room']
 	
-	text = `Building: ${building} | Level: ${level}`
+	text = `Building: ${building} | Level: ${level} | Room: ${room}`
 
 	$("#lower-console").text(text)
 
@@ -254,7 +254,7 @@ function loadGeomFromOutline(k_obj) {
 
 	var extrudeSettings = {depth: 120, bevelEnabled: false};
 	var geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-	var material = new THREE.MeshPhongMaterial( { color: 0x0000FF, specular: 0x111111, shininess: 0, flatShading: false, transparent: true, opacity: 1} );
+	var material = new THREE.MeshPhongMaterial( { color: 0xFFFFFF, specular: 0x111111, shininess: 0, flatShading: false, transparent: true, opacity: 1} );
 	var mesh = new THREE.Mesh(geometry, material)
 
 	// mesh.position.set( 0, - 0.25, 0.6 );
@@ -282,6 +282,7 @@ function destroyEverything(){
 		object.geometry.dispose();
 		object.material.dispose();
 		scene.remove(object);
+		delete uuids[k];
 	});
 }
 
@@ -317,14 +318,17 @@ function switchToLayer(layer) {
 
 	switch(layer) {
 		case "building":
+			loadAllLevels('Level')
 			tweenCamera(camera, [6000, 3127, 9162], 1000)
 
 			break;
 		case "levels":
+			loadAllLevels('Level')	
 			tweenCamera(camera, [6801, 1769, 7331], 1000)
 
 			break;
 		default: 
+			loadAllLevels('Room')
 			tweenCamera(camera, [7224, 1560, 6665], 1000)
 	}
 }
@@ -335,7 +339,7 @@ function updateObjectOpacities(uuid) {
 
 	$.each(uuids, function (k, v) {
 		if (k !== uuid){
-			new_opacity = 0.1
+			new_opacity = 0.125
 		} else {
 			new_opacity = 1
 		}
@@ -385,7 +389,7 @@ function objectFromPSQL(data) {
 
 
 
-function loadAllLevels() {
+function loadAllLevels(kind) {
 
 	$.ajax({
         type: "GET",
@@ -397,16 +401,16 @@ function loadAllLevels() {
             for (var i = 0; i < x.length; i++) {
 			    obj = objectFromPSQL(x[i])
 			    // loadStl_k_obj(obj)
-			    loadGeomFromOutline(obj)
-			    objects.push(obj)
+			    if (obj['kind'] === kind) {
+				    loadGeomFromOutline(obj)
+				    objects.push(obj)
+				}	
 			}
 
         }
     });
 
 }
-
-
 
 
 
@@ -419,17 +423,8 @@ function pageOnLoad() {
 
 function init() {
 
-	console.log("init")
-	// load_csv(csv_file_path);
 	init_three_js();
-	loadSTLs('building')
-
-	loadAllLevels();
-
-
-
-
-
+	loadAllLevels('Level');
 
 }
 
