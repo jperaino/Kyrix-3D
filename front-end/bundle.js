@@ -8,7 +8,7 @@ const STLLoader = require('three-stl-loader')(THREE)
 // Properties ===================================================================
 console.log("Loaded main.js today")
 
-var csv_file_path = '../data/Kyrix_Trial_200211.csv'
+// var csv_file_path = '../data/Kyrix_Trial_200211.csv'
 
 var current_zoom = "building"
 
@@ -32,36 +32,6 @@ var radius = 100, theta = 0;
 $(".layer-toggle").on("change", function(){
 	switchToLayer(this.dataset.layer)
 })
-
-
-// D3 Methods ===================================================================
-
-function load_csv(csv_file_path) {
-
-	// Read CSV and sort rows into appropriate arrays
-	d3.csv(csv_file_path, function(data) {
-
-		var k_obj = {
-			level: data.level,
-			building: data.building,
-			room: data.room,
-			stl_fp: data.stl_fp,
-			infection_count: data.infection_count
-		}
-
-
-		if (data.level === '') {
-			building_fps.push(data.stl_fp)
-			building_k_objs.push(k_obj)
-		} else if (data.room === '') {
-			level_fps.push(data.stl_fp)
-			level_k_objs.push(k_obj)
-		} else {
-			room_fps.push(data.stl_fp)
-			room_k_objs.push(k_obj)
-		}
-	})
-}
 
 
 // THREE.JS Init ===================================================================
@@ -161,8 +131,6 @@ function onDocumentMouseMove(event){
 
 
 function onDocumentMouseClick(event){
-	console.log("Here... 2")
-	console.log(globalVar.serverAddr)
 	/* Handles mouse click events for three.js raycasting */
 	event.preventDefault();
 	raycaster.setFromCamera(mouse, camera);
@@ -171,17 +139,6 @@ function onDocumentMouseClick(event){
 	if (intersects.length > 0) {
 		INTERSECTED = intersects[0].object
 		onGeometryClick(INTERSECTED.uuid)
-
-		// switch (current_zoom) {
-		// 	case "building":
-		// 		switchToLayer("levels");
-		// 		break; 
-		// 	case "levels":
-		// 		switchToLayer("rooms");
-		// 		break;
-		// 	default:
-		// 		switchToLayer("building");
-		// }
 	}
 }
 
@@ -195,10 +152,9 @@ function onGeometryClick(uuid) {
 	
 	text = `Building: ${building} | Level: ${level}`
 
-
-
-
 	$("#lower-console").text(text)
+
+	updateObjectOpacities(uuid)
 }
 
 
@@ -237,11 +193,6 @@ function loadSTLs(layer) {
 		loadStl_k_obj(k_obj)
 	})
 
-
-	// // Iterate over selected stl files
-	// files.forEach(function(fp){
-	// 	loadStl('/data/stls-complex/' + fp) // DEBUG HERE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	// })
 }
 
 
@@ -270,13 +221,12 @@ function loadStl_k_obj(k_obj) {
 			color = 0xFF0000;
 		}
 
-		var material = new THREE.MeshPhongMaterial( { color: color, specular: 0x111111, shininess: 0, flatShading: false} );
+		var material = new THREE.MeshPhongMaterial( { color: color, specular: 0x111111, shininess: 0, flatShading: false, transparent: true, opacity: 1} );
 		// var material = new THREE.MeshPhongMaterial( { flatShading: true } );
 		var mesh = new THREE.Mesh( geometry, material );
 
-		console.log(k_obj.level)
 		// mesh.position.set( 0, - 0.25, 0.6 );
-		mesh.position.set( 0, k_obj.level * 100 * .5 , 0 );
+		mesh.position.set( 0, k_obj.level * 120 * .5 , 0 );
 		mesh.rotation.set( - Math.PI / 2, 0, - Math.PI / 2 );
 		mesh.scale.set( 0.5, 0.5, 0.5 );
 		// mesh.scale.set( 1,1,1 );
@@ -291,32 +241,37 @@ function loadStl_k_obj(k_obj) {
 }
 
 
+function loadGeomFromOutline(k_obj) {
+
+	vertices = []
+	raw_vertices = JSON.parse(k_obj["outline"])["vertices"]
+
+	$.each(raw_vertices, function(k, v) {
+		vertices.push(new THREE.Vector2(v.x, v.y))
+	})
+
+	var shape = new THREE.Shape(vertices);
+	shape.autoClose = true; 
+
+	var extrudeSettings = {depth: 120, bevelEnabled: false};
+	var geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+	var material = new THREE.MeshPhongMaterial( { color: 0x0000FF, specular: 0x111111, shininess: 0, flatShading: false, transparent: true, opacity: 1} );
+	var mesh = new THREE.Mesh(geometry, material)
+
+	// mesh.position.set( 0, - 0.25, 0.6 );
+	mesh.position.set( 0, k_obj.level * 120 * .5 , 0 );
+	mesh.rotation.set( - Math.PI / 2, 0, - Math.PI / 2 );
+	mesh.scale.set( 0.5, 0.5, 0.5 );
+	// mesh.scale.set( 1,1,1 );
+
+	mesh.castShadow = true;
+	mesh.receiveShadow = true;
+
+	scene.add( mesh );
+	uuids[mesh.uuid] = k_obj;
 
 
-// function loadStl(fp) {
-
-// 	console.log("not working")
-// 	var loader = new STLLoader();
-// 	// loader.load('/data/stl/ALL.stl', function (geometry) {
-// 	loader.load(fp, function (geometry) {
-		
-// 		// var material = new THREE.MeshPhongMaterial( { color: 0xffffff, specular: 0x111111, shininess: 0, flatShading: false} );
-// 		var material = new THREE.MeshPhongMaterial( { flatShading: true } );
-// 		var mesh = new THREE.Mesh( geometry, material );
-
-// 		mesh.position.set( 0, - 0.25, 0.6 );
-// 		mesh.rotation.set( - Math.PI / 2, 0, - Math.PI / 2 );
-// 		mesh.scale.set( 0.5, 0.5, 0.5 );
-
-// 		mesh.castShadow = true;
-// 		mesh.receiveShadow = true;
-
-// 		scene.add( mesh );
-// 		objects.push(mesh.uuid)
-
-// 	} );
-// }
-
+}
 
 
 function destroyEverything(){
@@ -324,21 +279,11 @@ function destroyEverything(){
 	console.log("Destroy Everything")
 	
 	$.each(uuids, function (k, v) {
-		console.log(k)
 		const object = scene.getObjectByProperty('uuid', k);
 		object.geometry.dispose();
 		object.material.dispose();
 		scene.remove(object);
 	});
-
-	// while (uuids.length > 0) {
-	// 	let uuid = uuids.pop().key();
-	// 	// console.log(uuid)
-	// 	const object = scene.getObjectByProperty('uuid', uuid);
-	// 	object.geometry.dispose();
-	// 	object.material.dispose();
-	// 	scene.remove(object);
-	// }
 }
 
 
@@ -349,6 +294,16 @@ function tweenCamera(camera, position, duration) {
 		x:position[0],
 		y:position[1],
 		z:position[2]
+	}, duration)
+	.easing(TWEEN.Easing.Quadratic.InOut)
+	.start();
+}
+
+
+function tweenOpacity(object, new_opacity, duration) {
+
+	new TWEEN.Tween(object.material).to({
+		opacity: new_opacity,
 	}, duration)
 	.easing(TWEEN.Easing.Quadratic.InOut)
 	.start();
@@ -374,6 +329,22 @@ function switchToLayer(layer) {
 			tweenCamera(camera, [7224, 1560, 6665], 1000)
 	}
 }
+
+
+function updateObjectOpacities(uuid) {
+	/*Given a uuid, fades all other objects of that type in the scene */
+
+	$.each(uuids, function (k, v) {
+		if (k !== uuid){
+			new_opacity = 0.1
+		} else {
+			new_opacity = 1
+		}
+		const object = scene.getObjectByProperty('uuid', k)
+		tweenOpacity(object, new_opacity, 400)
+	});
+}
+
 
 
 // UI Methods ===================================================================
@@ -426,7 +397,8 @@ function loadAllLevels() {
 
             for (var i = 0; i < x.length; i++) {
 			    obj = objectFromPSQL(x[i])
-			    loadStl_k_obj(obj)
+			    // loadStl_k_obj(obj)
+			    loadGeomFromOutline(obj)
 			    objects.push(obj)
 			}
 
@@ -449,7 +421,7 @@ function pageOnLoad() {
 function init() {
 
 	console.log("init")
-	load_csv(csv_file_path);
+	// load_csv(csv_file_path);
 	init_three_js();
 	loadSTLs('building')
 
