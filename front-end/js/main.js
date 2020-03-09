@@ -19,6 +19,7 @@ var level_fps = [];
 var level_k_objs = [];
 var room_fps = [];
 var room_k_objs = [];
+var visible_rooms = [];
 
 var camera, controls, scene, renderer, raycaster;
 var mouse = new THREE.Vector2(), INTERSECTED;
@@ -153,6 +154,8 @@ function onGeometryClick(uuid) {
 
 	$("#lower-console").text(text)
 
+	viewRoomsFromLevel(k_obj);
+
 	updateObjectOpacities(uuid)
 }
 
@@ -166,34 +169,6 @@ function onWindowResize() {
 
 
 // THREE.JS Methods ===================================================================
-
-function loadSTLs(layer) {
-	/* Selects list of STLs to load and calls loading function */
-	var files;
-
-	// Select the appropriate stl files
-	switch(layer) {
-		case 'building':
-			files = building_fps;
-			k_objs = building_k_objs;
-			break;
-		case 'levels':
-			files = level_fps;
-			k_objs = level_k_objs;
-			break;
-		case 'rooms':
-			files = room_fps;
-			k_objs = room_k_objs;
-			break;
-	}
-
-	// Iterate over selected stl files
-	k_objs.forEach(function(k_obj){
-		loadStl_k_obj(k_obj)
-	})
-
-}
-
 
 function pickHex(color1, color2, weight) {
     var w1 = weight;
@@ -346,6 +321,28 @@ function updateObjectOpacities(uuid) {
 		const object = scene.getObjectByProperty('uuid', k)
 		tweenOpacity(object, new_opacity, 400)
 	});
+}
+
+
+
+function viewRoomsFromLevel(level_obj) {
+	console.log("View Rooms from Level")
+
+	var level = level_obj.level;
+	var building = level_obj.building;
+	var visible_rooms = [];
+
+	console.log(level)
+	console.log(building)
+
+	for (room in room_k_objs) {
+		console.log(room['level'])
+		if (room['level'] === level) {
+			if (room['building'] === building) {
+				console.log(room);
+			}
+		}
+	}
 }
 
 
