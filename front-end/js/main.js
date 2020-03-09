@@ -25,6 +25,25 @@ var camera, controls, scene, renderer, raycaster;
 var mouse = new THREE.Vector2(), INTERSECTED;
 var radius = 100, theta = 0;
 
+var cur_building;
+var cur_level;
+var cur_room;
+
+
+
+// New Vars
+
+
+// Variable Setters ===================================================================
+
+function set_level(x) {
+
+	cur_level = x;
+
+
+
+} 
+
 
 // Listener Methods ===================================================================
 
@@ -50,7 +69,7 @@ function init_three_js() {
 
 	// Camera
 	camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 50000 );
-	camera.position.set( 6000, 3127, 9162 );
+	camera.position.set( 10706, 5203, 15119 );
 
 	// Orbit Controls
 	controls = new OrbitControls( camera, renderer.domElement );
@@ -58,10 +77,10 @@ function init_three_js() {
 	controls.dampingFactor = 0.05;
 	controls.screenSpacePanning = false;
 	controls.minDistance = 100;
-	controls.maxDistance = 5000;
+	controls.maxDistance = 40000;
 	controls.maxPolarAngle = Math.PI / 2;
 	controls.easing = true;
-	controls.target.set(8575,0,5366)
+	controls.target.set(18022,0,12510)
 
 	// Raycasting
 	raycaster = new THREE.Raycaster();
@@ -181,40 +200,6 @@ function pickHex(color1, color2, weight) {
 
 
 
-function loadStl_k_obj(k_obj) {
-
-	fp = '/data/stls-complex/' + k_obj.stl_fp
-
-	var loader = new STLLoader();
-	// loader.load('/data/stl/ALL.stl', function (geometry) {
-	loader.load(fp, function (geometry) {
-		
-		color = 0xffffff;
-
-		if (k_obj.infection_count != 0) {
-			color = 0xFF0000;
-		}
-
-		var material = new THREE.MeshPhongMaterial( { color: color, specular: 0x111111, shininess: 0, flatShading: false, transparent: true, opacity: 1} );
-		// var material = new THREE.MeshPhongMaterial( { flatShading: true } );
-		var mesh = new THREE.Mesh( geometry, material );
-
-		// mesh.position.set( 0, - 0.25, 0.6 );
-		mesh.position.set( 0, k_obj.level * 120 * .5 , 0 );
-		mesh.rotation.set( - Math.PI / 2, 0, - Math.PI / 2 );
-		mesh.scale.set( 0.5, 0.5, 0.5 );
-		// mesh.scale.set( 1,1,1 );
-
-		mesh.castShadow = true;
-		mesh.receiveShadow = true;
-
-		scene.add( mesh );
-		uuids[mesh.uuid] = k_obj;
-
-	} );
-}
-
-
 function loadGeomFromOutline(k_obj) {
 
 	vertices = []
@@ -232,11 +217,9 @@ function loadGeomFromOutline(k_obj) {
 	var material = new THREE.MeshPhongMaterial( { color: 0xFFFFFF, specular: 0x111111, shininess: 0, flatShading: false, transparent: true, opacity: 1} );
 	var mesh = new THREE.Mesh(geometry, material)
 
-	// mesh.position.set( 0, - 0.25, 0.6 );
-	mesh.position.set( 0, k_obj.level * 120 * .5 , 0 );
+	mesh.position.set( 0, k_obj.level * 120, 0 );
 	mesh.rotation.set( - Math.PI / 2, 0, - Math.PI / 2 );
-	mesh.scale.set( 0.5, 0.5, 0.5 );
-	// mesh.scale.set( 1,1,1 );
+	mesh.scale.set( 1, 1, 1 );
 
 	mesh.castShadow = true;
 	mesh.receiveShadow = true;
@@ -294,17 +277,17 @@ function switchToLayer(layer) {
 	switch(layer) {
 		case "building":
 			loadAllLevels('Level')
-			tweenCamera(camera, [6000, 3127, 9162], 1000)
+			tweenCamera(camera, [9819, 6873, 16535], 1000)
 
 			break;
 		case "levels":
 			loadAllLevels('Level')	
-			tweenCamera(camera, [6801, 1769, 7331], 1000)
+			// tweenCamera(camera, [6801, 1769, 7331], 1000)
 
 			break;
 		default: 
 			loadAllLevels('Room')
-			tweenCamera(camera, [7224, 1560, 6665], 1000)
+			// tweenCamera(camera, [7224, 1560, 6665], 1000)
 	}
 }
 
@@ -416,12 +399,56 @@ function pageOnLoad() {
 }
 
 
+function load_from_psql() {
+	console.log("here")
+
+	var level_objs = [];
+	var room_objs = [];
+
+	$.ajax({
+        type: "GET",
+        url: "/canvas",
+        data: "id=mgh&predicate0=&predicate1=&predicate2=",
+        success: function(data) {
+        	x = JSON.parse(data).staticData[0]
+
+            for (var i = 0; i < x.length; i++) {
+			    obj = objectFromPSQL(x[i])
+			    console.log(obj.kind)
+
+				if (obj.kind === 'Level') {
+					// console.log("here 2")
+					level_objs.push(obj)
+					console.log(level_objs.length)
+				} else if (obj.kind === 'Room') {
+					// console.log("here 3")
+					room_objs.push(obj)
+					console.log(room_objs.length)
+				}
+
+			}
+
+        }
+    });
+
+    return [level_objs, room_objs]
+}
+
+
+
+
+
 // Main Functions ===================================================================
+
+
 
 function init() {
 
+
+
 	init_three_js();
 	loadAllLevels('Level');
+	// var loaded_objs = load_from_psql();
 
 }
 
