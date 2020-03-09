@@ -25,24 +25,25 @@ var camera, controls, scene, renderer, raycaster;
 var mouse = new THREE.Vector2(), INTERSECTED;
 var radius = 100, theta = 0;
 
-var cur_building;
-var cur_level;
-var cur_room;
+var level_objs = [];
+var room_objs = [];
 
+var cur_level = 25;
 
-
-// New Vars
-
-
-// Variable Setters ===================================================================
+// UPDATE METHODS ===================================================================
 
 function set_level(x) {
 
-	cur_level = x;
+	int_x = parseInt(x)
+	str_x = `${int_x}`
 
+	console.log(`Updating level to: ${str_x}`)
+	cur_level = int_x;
+	updateObjectOpacities(cur_level) 
+	get_rooms_from_level(cur_level);
 
-
-} 
+	$("#level-label").text(`Current Level: ${str_x}`)
+}
 
 
 // Listener Methods ===================================================================
@@ -50,6 +51,26 @@ function set_level(x) {
 $(".layer-toggle").on("change", function(){
 	switchToLayer(this.dataset.layer)
 })
+
+
+document.onkeydown = checkKey;
+
+function checkKey(e) {
+
+	if (e['key'] === "ArrowUp") {
+		console.log("ARROW UP")
+		console.log(cur_level + 1);
+		set_level(cur_level + 1);
+	} else if (e['key'] === "ArrowDown") {
+		console.log("ARROW DOWN")
+		console.log(cur_level -1);
+		set_level(cur_level - 1);
+
+	}
+
+	console.log(e)
+}
+
 
 
 // THREE.JS Init ===================================================================
@@ -171,11 +192,11 @@ function onGeometryClick(uuid) {
 	
 	text = `Building: ${building} | Level: ${level} | Room: ${room}`
 
-	$("#lower-console").text(text)
+	$("#lower-console").text(text) 
 
 	viewRoomsFromLevel(k_obj);
-
-	updateObjectOpacities(uuid)
+	set_level(uuids[uuid]['level'])
+	// updateObjectOpacities(uuid)
 }
 
 
@@ -236,11 +257,13 @@ function destroyEverything(){
 	console.log("Destroy Everything")
 	
 	$.each(uuids, function (k, v) {
-		const object = scene.getObjectByProperty('uuid', k);
-		object.geometry.dispose();
-		object.material.dispose();
-		scene.remove(object);
-		delete uuids[k];
+		if (v['kind'] == 'Room') {
+			const object = scene.getObjectByProperty('uuid', k);
+			object.geometry.dispose();
+			object.material.dispose();
+			scene.remove(object);
+			delete uuids[k];
+		}	
 	});
 }
 
@@ -292,20 +315,43 @@ function switchToLayer(layer) {
 }
 
 
-function updateObjectOpacities(uuid) {
+
+function updateObjectOpacities(level) {
 	/*Given a uuid, fades all other objects of that type in the scene */
+	destroyEverything()
 
 	$.each(uuids, function (k, v) {
-		if (k !== uuid){
-			new_opacity = 0.125
+		test_level = v['level']
+
+		if (test_level > cur_level - 1) {
+			visible = false;
+			new_opacity = 1;
 		} else {
-			new_opacity = 1
+			visible = true;
+			new_opacity = 0.125;
 		}
-		const object = scene.getObjectByProperty('uuid', k)
-		tweenOpacity(object, new_opacity, 400)
+
+		const object = scene.getObjectByProperty('uuid', k);
+		object.visible = visible;
+		tweenOpacity(object, new_opacity, 400);
 	});
 }
 
+
+function get_rooms_from_level(level){
+	console.log(`Getting rooms from level ${level}`)
+
+	$.each(room_objs, function(k,v) {
+		// if (v['building'] === building) {
+		if (true) {	
+			if (v['level'] === `${level}`) {
+				loadGeomFromOutline(v)
+			}
+		}
+
+	})
+
+}
 
 
 function viewRoomsFromLevel(level_obj) {
@@ -369,42 +415,14 @@ function objectFromPSQL(data) {
 
 
 
-function loadAllLevels(kind) {
-
-	$.ajax({
-        type: "GET",
-        url: "/canvas",
-        data: "id=mgh&predicate0=&predicate1=&predicate2=",
-        success: function(data) {
-        	x = JSON.parse(data).staticData[0]
-
-            for (var i = 0; i < x.length; i++) {
-			    obj = objectFromPSQL(x[i])
-			    // loadStl_k_obj(obj)
-			    if (obj['kind'] === kind) {
-				    loadGeomFromOutline(obj)
-				    objects.push(obj)
-				}	
-			}
-
-        }
-    });
-
-}
-
-
-
 function pageOnLoad() {
-	console.log("ok")
+	console.log("Executed Page on Load")
 }
 
 
-function load_from_psql() {
+function load_all_from_psql() {
 	console.log("here")
 
-	var level_objs = [];
-	var room_objs = [];
-
 	$.ajax({
         type: "GET",
         url: "/canvas",
@@ -414,29 +432,21 @@ function load_from_psql() {
 
             for (var i = 0; i < x.length; i++) {
 			    obj = objectFromPSQL(x[i])
-			    console.log(obj.kind)
 
 				if (obj.kind === 'Level') {
-					// console.log("here 2")
 					level_objs.push(obj)
-					console.log(level_objs.length)
+					loadGeomFromOutline(obj)
+
 				} else if (obj.kind === 'Room') {
-					// console.log("here 3")
 					room_objs.push(obj)
-					console.log(room_objs.length)
+
 				}
 
 			}
-
         }
     });
 
-    return [level_objs, room_objs]
 }
-
-
-
-
 
 // Main Functions ===================================================================
 
@@ -444,11 +454,8 @@ function load_from_psql() {
 
 function init() {
 
-
-
 	init_three_js();
-	loadAllLevels('Level');
-	// var loaded_objs = load_from_psql();
+	load_all_from_psql();
 
 }
 
