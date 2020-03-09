@@ -211,13 +211,22 @@ function onWindowResize() {
 
 // THREE.JS Methods ===================================================================
 
-function pickHex(color1, color2, weight) {
-    var w1 = weight;
-    var w2 = 1 - w1;
-    var rgb = [Math.round(color1[0] * w1 + color2[0] * w2),
-        Math.round(color1[1] * w1 + color2[1] * w2),
-        Math.round(color1[2] * w1 + color2[2] * w2)];
-    return rgb;
+function pickColor(k_obj) {
+    kind = k_obj['kind'];
+    console.log(kind);
+
+    if (kind === 'Level') {
+    	return d3.interpolateOrRd(0);
+    	
+    } else {
+    	number = Math.random();
+    	if (number > 0.95) {
+    		return d3.interpolateOrRd(1);
+    	} else {
+    		return d3.interpolateOrRd(0);
+    	}
+    	
+    }
 }
 
 
@@ -234,9 +243,12 @@ function loadGeomFromOutline(k_obj) {
 	var shape = new THREE.Shape(vertices);
 	shape.autoClose = true; 
 
+	color = pickColor(k_obj);
+	console.log(color)
+
 	var extrudeSettings = {depth: 120, bevelEnabled: false};
 	var geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-	var material = new THREE.MeshPhongMaterial( { color: 0xFFFFFF, specular: 0x111111, shininess: 0, flatShading: false, transparent: true, opacity: 1} );
+	var material = new THREE.MeshPhongMaterial( { color: color, specular: 0x111111, shininess: 0, flatShading: false, transparent: true, opacity: 1} );
 	var mesh = new THREE.Mesh(geometry, material)
 
 	mesh.position.set( 0, k_obj.level * 120, 0 );
@@ -316,34 +328,6 @@ function switchToLayer(layer) {
 }
 
 
-// function updateObjectOpacities(uuid) {
-// 	/*Given a uuid, fades all other objects of that type in the scene */
-// 	destroyEverything()
-// 	// cur_level = parseInt(uuids[uuid]['level'])
-// 	console.log(`Current Level: ${cur_level}`)
-
-// 	$.each(uuids, function (k, v) {
-// 		if (k !== uuid){
-// 			test_level = v['level']
-// 			if (test_level > cur_level - 1) {
-// 				visible = false;
-// 				// new_opacity = 0;
-// 			} else {
-// 				visible = true;
-// 				new_opacity = 0.125;
-// 			}
-// 		} else {
-// 			visible = false;
-// 			new_opacity = 1;
-// 			get_rooms_from_level(uuid);
-// 		}
-// 		const object = scene.getObjectByProperty('uuid', k);
-// 		object.visible = visible;
-// 		tweenOpacity(object, new_opacity, 400);
-// 	});
-// }
-
-
 
 function updateObjectOpacities(level) {
 	/*Given a uuid, fades all other objects of that type in the scene */
@@ -357,7 +341,8 @@ function updateObjectOpacities(level) {
 			new_opacity = 1;
 		} else {
 			visible = true;
-			new_opacity = 0.125;
+			// new_opacity = 0.125;
+			new_opacity = 0.08;
 		}
 
 		const object = scene.getObjectByProperty('uuid', k);
