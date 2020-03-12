@@ -213,18 +213,20 @@ function onWindowResize() {
 
 function pickColor(k_obj) {
     kind = k_obj['kind'];
-    console.log(kind);
+    // console.log(kind);
 
     if (kind === 'Level') {
     	return d3.interpolateOrRd(0);
     	
     } else {
-    	number = Math.random();
-    	if (number > 0.95) {
-    		return d3.interpolateOrRd(1);
-    	} else {
-    		return d3.interpolateOrRd(0);
-    	}
+    	// number = Math.random();
+    	number = k_obj.infections;
+    	return d3.interpolateOrRd(number/5);
+    	// if (number > 0.99) {
+    	// 	return d3.interpolateOrRd(1);
+    	// } else {
+    	// 	return d3.interpolateOrRd(0);
+    	// }
     	
     }
 }
@@ -244,7 +246,7 @@ function loadGeomFromOutline(k_obj) {
 	shape.autoClose = true; 
 
 	color = pickColor(k_obj);
-	console.log(color)
+	// console.log(color)
 
 	var extrudeSettings = {depth: 120, bevelEnabled: false};
 	var geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
@@ -419,7 +421,7 @@ function objectFromPSQL(data) {
 		building: data.building,
 		room: data.room,
 		stl_fp: data.stl_fp,
-		infection_count: data.infection_count,
+		infections: data.infections,
 		kind: data.kind,
 		outline: data.outline
 	}

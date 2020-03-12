@@ -212,19 +212,13 @@ function onWindowResize() {
 
 function pickColor(k_obj) {
     kind = k_obj['kind'];
-    // console.log(kind);
 
     if (kind === 'Level') {
     	return d3.interpolateOrRd(0);
     	
     } else {
-    	number = Math.random();
-    	if (number > 0.99) {
-    		return d3.interpolateOrRd(1);
-    	} else {
-    		return d3.interpolateOrRd(0);
-    	}
-    	
+    	number = k_obj.infections;
+    	return d3.interpolateOrRd(number/5);
     }
 }
 
@@ -418,7 +412,7 @@ function objectFromPSQL(data) {
 		building: data.building,
 		room: data.room,
 		stl_fp: data.stl_fp,
-		infection_count: data.infection_count,
+		infections: data.infections,
 		kind: data.kind,
 		outline: data.outline
 	}
