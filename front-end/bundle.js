@@ -177,14 +177,18 @@ function render() {
 			room_name = cur_k_obj['room']
 			building_name = cur_k_obj['building']
 			floor_name = cur_k_obj['level']
+			infections = cur_k_obj['infections']
 
-			$("#highlighted-info").append(`<h3>Building: ${building_name}</h3>`)
-			$("#highlighted-info").append(`<h3>Level: ${floor_name}</h3>`)
-			if (room_name === "") {
-				$("#highlighted-info").append('')
+
+			if (mode !== 'infections') {
+				$("#room_body").empty();
+				$("#room_body").append(
+					`<tr><th scope='row'>${room_name}</th><td>${building_name}</td><td>${floor_name}</td><td>${infections}</td></tr>`
+					)
 			} else {
-				
-				$("#highlighted-info").append(`<h4>Room ${room_name}</h4>`)
+				console.log(INTERSECTED)
+				console.log(INTERSECTED.uuid)
+				$(`#${room_name}`).addClass('table-danger')
 			}
 		}
 
@@ -192,7 +196,15 @@ function render() {
 	} else {
 		if ( INTERSECTED ) {
 			INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex )
-			$("#highlighted-info").empty();
+			if (mode !== 'infections') {
+				$("#highlighted-info").empty();
+				$("#room_body").empty();
+				
+			} else {
+				cur_k_obj = uuids[INTERSECTED.uuid];
+				room_name = cur_k_obj['room'];
+				$(`#${room_name}`).removeClass('table-danger')
+			}
 		};
 		INTERSECTED = null;
 
@@ -496,6 +508,7 @@ function load_all_from_psql() {
 
 
 function viewPlan() {
+	$("#room_body").empty();
 	mode = 'plan'
 
 	tweenCamera(camera, [16855, 13387, 13703], 1500, target=[16855, 0, 13703], )
@@ -504,6 +517,7 @@ function viewPlan() {
 }
 
 function viewBuildings(){
+	$("#room_body").empty();
 	mode = 'buildings'
 
 	destroyEverything()
@@ -519,6 +533,7 @@ function viewBuildings(){
 
 
 function viewInfectionRooms() {
+	$("#room_body").empty();
 	mode = 'infections'
 
 	console.log("Viewing infected rooms");
@@ -531,6 +546,13 @@ function viewInfectionRooms() {
 	$.each(room_objs, function(k,v) {
 		if (v['infections'] > 0) {
 			loadGeomFromOutline(v)
+
+			$("#room_body").append(
+				`<tr id='${v.room}'><th scope='row'>${v.room}</th><td>${v.building}</td><td>${v.level}</td><td>${v.infections}</td></tr>`
+				)
+
+
+
 		}
 	})
 }
@@ -538,6 +560,7 @@ function viewInfectionRooms() {
 
 
 function viewPatients () {
+	$("#room_body").empty();
 	mode = 'patients'
 	$("#level-label").text(`Showing rooms patient interacted with`)
 

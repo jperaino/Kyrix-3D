@@ -25,7 +25,7 @@
 			<h2>Massachusetts General Hospital</h2>
 			<p id=level-label>Viewing all levels</p>
 			
-			<button type="button" class="btn btn-primary btn-sm" id="viewBuildings">Buildings</button>
+			<button type="button" class="btn btn-dark btn-sm" id="viewBuildings">Buildings</button>
 			<button type="button" class="btn btn-primary btn-sm" id="viewPlan">Plan</button>
 			<button type="button" class="btn btn-primary btn-sm" id="infectedRooms">Infected Rooms</button>
 			<button type="button" class="btn btn-primary btn-sm" id="viewPatients">Patients</button>
@@ -43,7 +43,28 @@
 			</div> -->
 		</div>
 
-		<div id="highlighted-info"></div>
+
+		<div id="room-table-div">
+			<h3>Rooms</h3>
+			<table class="table table-sm">
+			  <thead>
+			    <tr>
+			      <th scope="col">Room</th>
+			      <th scope="col">Building</th>
+			      <th scope="col">Level</th>
+			      <th scope="col">Count</th>
+			    </tr>
+			  </thead>
+			  <tbody id='room_body'>
+			  		<!-- <tr class="table-primary"><th scope='row'>Room</th><td>v.building</td><td>v.level</td><td>v.infections</td></tr> -->
+			  </tbody>
+			</table>
+		</div>
+
+
+
+		<div id="highlighted-info">
+		</div>
 
 
 		<div id="bottom-alert">
