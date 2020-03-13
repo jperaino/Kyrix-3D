@@ -33,6 +33,7 @@ var cur_level = 25;
 // UPDATE METHODS ===================================================================
 
 function set_level(x) {
+	console.log("updating level")
 
 	int_x = parseInt(x)
 	str_x = `${int_x}`
@@ -63,12 +64,12 @@ function checkKey(e) {
 		set_level(cur_level + 1);
 	} else if (e['key'] === "ArrowDown") {
 		console.log("ARROW DOWN")
-		console.log(cur_level -1);
+		// console.log(cur_level -1);
 		set_level(cur_level - 1);
 
 	}
 
-	console.log(e)
+	// console.log(e)
 }
 
 
@@ -150,11 +151,33 @@ function render() {
 			INTERSECTED = intersects[ 0 ].object;
 			INTERSECTED.currentHex = INTERSECTED.material.emissive.getHex();
 			INTERSECTED.material.emissive.setHex( 0x0000FF );
+			$("#highlighted-info").empty();
+
+			cur_k_obj = uuids[INTERSECTED.uuid];
+
+			console.log(cur_k_obj)
+			room_name = cur_k_obj['room']
+			building_name = cur_k_obj['building']
+			floor_name = cur_k_obj['level']
+
+			$("#highlighted-info").append(`<h3>Building: ${building_name}</h3>`)
+			$("#highlighted-info").append(`<h3>Level: ${floor_name}</h3>`)
+			if (room_name === "") {
+				$("#highlighted-info").append('')
+			} else {
+				
+				$("#highlighted-info").append(`<h4>Room ${room_name}</h4>`)
+			}
 		}
 
+
 	} else {
-		if ( INTERSECTED ) INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex );
+		if ( INTERSECTED ) {
+			INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex )
+			$("#highlighted-info").empty();
+		};
 		INTERSECTED = null;
+
 	}
 
 	renderer.render( scene, camera );
@@ -218,7 +241,7 @@ function pickColor(k_obj) {
     	
     } else {
     	number = k_obj.infections;
-    	return d3.interpolateOrRd(number/5);
+    	return d3.interpolateOrRd(number/5 *.8);
     }
 }
 
@@ -239,9 +262,20 @@ function loadGeomFromOutline(k_obj) {
 	color = pickColor(k_obj);
 	// console.log(color)
 
-	var extrudeSettings = {depth: 120, bevelEnabled: false};
-	var geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+	var depth = 110
 	var material = new THREE.MeshPhongMaterial( { color: color, specular: 0x111111, shininess: 0, flatShading: false, transparent: true, opacity: 1} );
+
+	if (k_obj.kind === 'Room') {
+		console.log("room depth")
+		depth = 120;
+		material.transparent = false;
+	}
+
+
+	var extrudeSettings = {depth: depth, bevelEnabled: false};
+	var geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+
+	
 	var mesh = new THREE.Mesh(geometry, material)
 
 	mesh.position.set( 0, k_obj.level * 120, 0 );
@@ -322,7 +356,7 @@ function switchToLayer(layer) {
 
 
 
-function updateObjectOpacities(level) {
+function updateObjectOpacities() {
 	/*Given a uuid, fades all other objects of that type in the scene */
 	destroyEverything()
 
@@ -347,6 +381,7 @@ function updateObjectOpacities(level) {
 
 function get_rooms_from_level(level){
 	console.log(`Getting rooms from level ${level}`)
+	// console.log(room_objs)
 
 	$.each(room_objs, function(k,v) {
 		// if (v['building'] === building) {
@@ -355,9 +390,7 @@ function get_rooms_from_level(level){
 				loadGeomFromOutline(v)
 			}
 		}
-
 	})
-
 }
 
 
@@ -384,6 +417,20 @@ function viewRoomsFromLevel(level_obj) {
 
 
 // UI Methods ===================================================================
+
+function showInfectionRooms() {
+	console.log("Viewing infected rooms");
+
+	set_level(25)
+
+	$.each(room_objs, function(k,v) {
+		if (v['infections'] > 0) {
+			loadGeomFromOutline(v)
+		}
+
+	})
+
+}
 
 function updateCameraLabels(camera, controls) {
 	/* Updates UI labels with camera position and target location */
@@ -463,6 +510,7 @@ function init() {
 
 	init_three_js();
 	load_all_from_psql();
+	$("#infectedRooms").click(showInfectionRooms);
 
 }
 

@@ -10,3 +10,10 @@
     left:2%;
     width: 96%;
 }
+
+#highlighted-info{
+	position: fixed;
+    top: 30px;
+    right:2%;
+    width: 300px;
+}
