@@ -24,10 +24,11 @@
 		<div id="debug-info">
 			<h2>Massachusetts General Hospital</h2>
 			<p id=level-label>Viewing all levels</p>
-<!-- 			<p id=camera-pos>Camera: None</p>
-			<p id=camera-look>Looking at:</p> -->
-
-			<button type="button" class="btn btn-primary btn-sm" id="infectedRooms">View Infected Rooms</button>
+			
+			<button type="button" class="btn btn-primary btn-sm" id="viewBuildings">Buildings</button>
+			<button type="button" class="btn btn-primary btn-sm" id="viewPlan">Plan</button>
+			<button type="button" class="btn btn-primary btn-sm" id="infectedRooms">Infected Rooms</button>
+			<button type="button" class="btn btn-primary btn-sm" id="viewPatients">Patients</button>
 
 			<!-- <div class="btn-group btn-group-toggle btn-group-sm" data-toggle="buttons">
 			  <label class="btn btn-primary active layer-toggle" data-layer="building">
@@ -46,7 +47,9 @@
 
 
 		<div id="bottom-alert">
-			<p id="lower-console">...</p>
+			<p id=camera-pos>Camera: None</p>
+			<p id=camera-look>Looking at:</p>
+			<!-- <p id="lower-console">...</p> -->
 		</div>
 
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.15.0/d3.js"></script>

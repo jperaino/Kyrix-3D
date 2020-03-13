@@ -10,7 +10,7 @@ console.log("Loaded main.js today")
 
 // var csv_file_path = '../data/Kyrix_Trial_200211.csv'
 
-var current_zoom = "building"
+var mode = 'building'
 
 var objects = []
 var uuids = {}
@@ -49,11 +49,6 @@ function set_level(x) {
 
 
 // Listener Methods ===================================================================
-
-$(".layer-toggle").on("change", function(){
-	switchToLayer(this.dataset.layer)
-})
-
 
 document.onkeydown = checkKey;
 
@@ -143,7 +138,29 @@ function render() {
 
 	// Find Raycasting Intersections
 	raycaster.setFromCamera(mouse, camera);
-	var intersects = raycaster.intersectObjects(scene.children);
+
+	children = scene.children;
+
+	
+	if (mode === 'infections') {
+		
+		temp_children = []
+		$.each(children, function(k, v){
+			if (v.type === "Mesh") {
+				if (uuids[v.uuid].kind === 'Room') {
+					temp_children.push(v)
+				}
+			}
+		})
+		children = temp_children
+
+	}
+
+
+	var intersects = raycaster.intersectObjects(children);
+
+
+
 	if ( intersects.length > 0 ) {
 		if ( INTERSECTED != intersects[ 0 ].object ) {
 			if ( INTERSECTED ) {
@@ -264,7 +281,7 @@ function loadGeomFromOutline(k_obj) {
 	// console.log(color)
 
 	var depth = 110
-	var material = new THREE.MeshPhongMaterial( { color: color, specular: 0x111111, shininess: 0, flatShading: false, transparent: true, opacity: 1} );
+	var material = new THREE.MeshPhongMaterial( { color: color, specular: 0x111111, shininess: 0, flatShading: false, transparent: true, opacity: 0} );
 
 	if (k_obj.kind === 'Room') {
 		console.log("room depth")
@@ -289,7 +306,8 @@ function loadGeomFromOutline(k_obj) {
 	scene.add( mesh );
 	uuids[mesh.uuid] = k_obj;
 
-
+	// const object = scene.getObjectByProperty('uuid', mesh.uuid);
+	tweenOpacity(mesh, 1, 1000);
 }
 
 
@@ -309,7 +327,7 @@ function destroyEverything(){
 }
 
 
-function tweenCamera(camera, position, duration) {
+function tweenCamera(camera, position, duration, target=null) {
 	/* Tweens the camera to a new position */
 
 	new TWEEN.Tween(camera.position).to({
@@ -319,6 +337,16 @@ function tweenCamera(camera, position, duration) {
 	}, duration)
 	.easing(TWEEN.Easing.Quadratic.InOut)
 	.start();
+
+	if (target !== null) {
+		new TWEEN.Tween(camera.target).to({
+			x:target[0],
+			y:target[1],
+			z:target[2]
+		}, duration)
+		.easing(TWEEN.Easing.Quadratic.InOut)
+		.start();
+	}
 }
 
 
@@ -330,31 +358,6 @@ function tweenOpacity(object, new_opacity, duration) {
 	.easing(TWEEN.Easing.Quadratic.InOut)
 	.start();
 }
-
-
-function switchToLayer(layer) {
-	current_zoom = layer;
-	// console.log(layer.length);
-	destroyEverything()
-	// loadSTLs(layer);
-
-	switch(layer) {
-		case "building":
-			loadAllLevels('Level')
-			tweenCamera(camera, [9819, 6873, 16535], 1000)
-
-			break;
-		case "levels":
-			loadAllLevels('Level')	
-			// tweenCamera(camera, [6801, 1769, 7331], 1000)
-
-			break;
-		default: 
-			loadAllLevels('Room')
-			// tweenCamera(camera, [7224, 1560, 6665], 1000)
-	}
-}
-
 
 
 function updateObjectOpacities() {
@@ -370,7 +373,7 @@ function updateObjectOpacities() {
 		} else {
 			visible = true;
 			// new_opacity = 0.125;
-			new_opacity = 0.08;
+			new_opacity = 0.095;
 		}
 
 		const object = scene.getObjectByProperty('uuid', k);
@@ -419,19 +422,7 @@ function viewRoomsFromLevel(level_obj) {
 
 // UI Methods ===================================================================
 
-function showInfectionRooms() {
-	console.log("Viewing infected rooms");
 
-	set_level(25)
-
-	$.each(room_objs, function(k,v) {
-		if (v['infections'] > 0) {
-			loadGeomFromOutline(v)
-		}
-
-	})
-
-}
 
 function updateCameraLabels(camera, controls) {
 	/* Updates UI labels with camera position and target location */
@@ -503,6 +494,62 @@ function load_all_from_psql() {
 
 }
 
+
+function viewPlan() {
+	mode = 'plan'
+
+	tweenCamera(camera, [16855, 13387, 13703], 1500, target=[16855, 0, 13703], )
+	set_level(8);
+
+}
+
+function viewBuildings(){
+	mode = 'buildings'
+
+	destroyEverything()
+	set_level(26);
+	$("#level-label").text(`Showing all levels`)
+
+	$.each(uuids, function(k, v) {
+		const object = scene.getObjectByProperty('uuid', k);
+		tweenOpacity(object, 1, 400);
+	})
+
+}
+
+
+function viewInfectionRooms() {
+	mode = 'infections'
+
+	console.log("Viewing infected rooms");
+	$("#level-label").text(`Showing infected rooms.`)
+
+	tweenCamera(camera, [12605, 4603, 14960], 1500, target=[17725, 0, 12565])
+
+	set_level(25)
+
+	$.each(room_objs, function(k,v) {
+		if (v['infections'] > 0) {
+			loadGeomFromOutline(v)
+		}
+	})
+}
+
+
+
+function viewPatients () {
+	mode = 'patients'
+	$("#level-label").text(`Showing rooms patient interacted with`)
+
+	$.each(room_objs, function(k,v) {
+		if (v['infections'] > 0) {
+			loadGeomFromOutline(v)
+		}
+	})
+
+
+}
+
 // Main Functions ===================================================================
 
 
@@ -511,7 +558,13 @@ function init() {
 
 	init_three_js();
 	load_all_from_psql();
-	$("#infectedRooms").click(showInfectionRooms);
+	$("#infectedRooms").click(viewInfectionRooms);
+	$("#viewPlan").click(viewPlan);
+	$("#viewBuildings").click(viewBuildings);
+	$("#viewPatients").click(viewPatients);
+
+
+
 
 }
 
