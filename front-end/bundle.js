@@ -31,6 +31,8 @@ var room_objs = [];
 
 var cur_level = 25;
 
+var visited_rooms = ['818', '509', '530J', '568', 'G01', '104']
+
 // UPDATE METHODS ===================================================================
 
 function set_level(x) {
@@ -62,7 +64,6 @@ function checkKey(e) {
 		console.log("ARROW DOWN")
 		// console.log(cur_level -1);
 		set_level(cur_level - 1);
-
 	}
 
 	// console.log(e)
@@ -104,6 +105,7 @@ function init_three_js() {
 	raycaster = new THREE.Raycaster();
 	document.addEventListener( 'mousemove', onDocumentMouseMove, false );
 	document.addEventListener( 'click', onDocumentMouseClick, false);
+	document.addEventListener( 'mousedown', viewPatients, false);
 
 	// Lights
 	var light = new THREE.DirectionalLight( 0xFAEBD7 );
@@ -199,7 +201,6 @@ function render() {
 			if (mode !== 'infections') {
 				$("#highlighted-info").empty();
 				$("#room_body").empty();
-				
 			} else {
 				cur_k_obj = uuids[INTERSECTED.uuid];
 				room_name = cur_k_obj['room'];
@@ -230,9 +231,20 @@ function onDocumentMouseClick(event){
 
 	if (intersects.length > 0) {
 		INTERSECTED = intersects[0].object
-		onGeometryClick(INTERSECTED.uuid)
+
+		if (mode !== 'infections') {
+			onGeometryClick(INTERSECTED.uuid)
+		} else {
+			// onDetailRoomClick(INTERSECTED.uuid)
+			console.log("not infections")
+			viewPatients();
+		}
+		
 	}
 }
+
+
+
 
 
 function onGeometryClick(uuid) {
@@ -432,6 +444,7 @@ function viewRoomsFromLevel(level_obj) {
 
 
 
+
 // UI Methods ===================================================================
 
 
@@ -550,28 +563,76 @@ function viewInfectionRooms() {
 			$("#room_body").append(
 				`<tr id='${v.room}'><th scope='row'>${v.room}</th><td>${v.building}</td><td>${v.level}</td><td>${v.infections}</td></tr>`
 				)
-
-
-
 		}
 	})
 }
+
+
+// function onDetailRoomClick(uuid) {
+// 	console.log(`Detail Room Clicked: ${uuid}`)
+// 	$("#room_body").empty();
+// 	mode = 'infections'
+
+// 	console.log("Viewing infected rooms");
+// 	$("#level-label").text(`Showing infected rooms.`)
+
+// 	// tweenCamera(camera, [12605, 4603, 14960], 1500, target=[17725, 0, 12565])
+
+// 	// set_level(25)
+// 	destroyEverything();
+
+// 	$.each(room_objs, function(k,v) {
+
+// 		try {
+// 			if (v['infections'] > 0) {
+
+// 				// console.log()
+
+// 				if (visited_rooms.includes(v['room'])) {
+
+// 					loadGeomFromOutline(v)
+
+// 					$("#room_body").append(
+// 						`<tr id='${v.room}'><th scope='row'>${v.room}</th><td>${v.building}</td><td>${v.level}</td><td>${v.infections}</td></tr>`
+// 						)
+// 				}
+// 			}
+// 		} catch {
+// 			console.log(v)
+// 		}
+
+// 		// console.log(v.room)
+		
+// 	})
+// }
 
 
 
 function viewPatients () {
-	$("#room_body").empty();
-	mode = 'patients'
-	$("#level-label").text(`Showing rooms patient interacted with`)
 
-	$.each(room_objs, function(k,v) {
-		if (v['infections'] > 0) {
-			loadGeomFromOutline(v)
-		}
-	})
+	if (mode === 'infections') {
+
+		$("#room_body").empty();
+		mode = 'patients'
+		$("#level-label").text(`Showing rooms patient interacted with`)
+
+		destroyEverything();
+		$.each(room_objs, function(k,v) {
+			if (visited_rooms.includes(v.room)) {
+				loadGeomFromOutline(v)
+
+				$("#room_body").append(
+					`<tr id='${v.room}'><th scope='row'>'${v.room}'</th><td>${v.building}</td><td>${v.level}</td><td>${v.infections}</td></tr>`
+					)
+			}
+		})
 
 
+	}
 }
+
+
+
 
 // Main Functions ===================================================================
 
