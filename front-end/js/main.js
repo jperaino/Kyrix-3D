@@ -4,6 +4,16 @@ console.log("Loaded main.js");
 const THREE = require('three');
 const OrbitControls = require('three-orbitcontrols');
 const STLLoader = require('three-stl-loader')(THREE);
+// const DAT = require('dat-gui')
+// const GUI = require('three-dat.gui')
+// const EffectComposer = require('three-effectcomposer')
+// const SSAOPass = require('three.ssaopass')
+
+// require('three.ssaopass')
+
+// console.log(SSAOPass)
+
+
 
 
 // PROPERTIES ===================================================================
@@ -20,7 +30,7 @@ infected_uuids = [];
 
 // Colors
 var colors = {
-	'background': new THREE.Color( 0xEEEEEE ),
+	'background': new THREE.Color( 0xffffff ),
 	'selected_hex': 0x0000FF
 };
 
@@ -50,7 +60,6 @@ function set_mode(new_mode, level=null) {
 			console.log(`ERROR! No mode called ${new_mode}`)
 	}
 
-	// update_raycasting_targets(new_mode)
 }
 
 function mode_to_all_buildings() {
@@ -99,7 +108,6 @@ function mode_to_infections() {
 	})
 
 	set_raycaster_targets(infected_uuids);
-
 }
 
 
@@ -180,7 +188,13 @@ function init_three_js() {
 	renderer = new THREE.WebGLRenderer( { antialias: true } );
 	renderer.setPixelRatio( window.devicePixelRatio );
 	renderer.setSize( window.innerWidth, window.innerHeight );
+	renderer.shadowMap.enabled = true;
+	renderer.shadowMap.type = THREE.VSMShadowMap;
+	renderer.setClearColor( 0xCCCCCC, 1 );
 	document.body.appendChild( renderer.domElement );
+
+
+	
 
 	// Camera
 	camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 50000 );
@@ -204,15 +218,21 @@ function init_three_js() {
 	// document.addEventListener( 'mousedown', viewPatients, false);
 
 	// Lights
-	var light = new THREE.DirectionalLight( 0xFAEBD7 );
+	var light = new THREE.DirectionalLight( 0xffffff );
 	light.position.set( 100, 100, 100 );
+	light.intensity = 0.1
+	// light.castShadow = true;
 	scene.add( light );
 
 	var light = new THREE.DirectionalLight( 0xffffff );
-	light.position.set( - 1, - 1, - 1 );
+	light.position.set( 23584, 6652, 4096 );
+	// light.castShadow = true;
+	light.intensity = 0.1
 	scene.add( light );
 
-	var light = new THREE.AmbientLight( 0x222222 );
+	var light = new THREE.AmbientLight( 0xffffff );
+	// light.castShadow = true;
+	light.intensity = 0.3;
 	scene.add( light );
 
 	// Window resize listener
@@ -220,6 +240,27 @@ function init_three_js() {
 
 	// Load Ground Plane
 	loadGroundPlane();
+
+
+	var dirLight = new THREE.DirectionalLight( 0xFFFFFF, 1 );
+					dirLight.name = 'Dir. Light';
+					dirLight.position.set( 10000, 15000, 17000 );
+					dirLight.castShadow = true;
+					dirLight.shadow.camera.near = 0.1;
+					dirLight.shadow.camera.far = 50000;
+					dirLight.shadow.camera.right = 20000;
+					dirLight.shadow.camera.left = - 10000;
+					dirLight.shadow.camera.top	= 10000;
+					dirLight.shadow.camera.bottom = - 30000;
+					dirLight.shadow.mapSize.width = 512;
+					dirLight.shadow.mapSize.height = 512;
+					dirLight.shadow.radius = 3;
+					dirLight.shadow.bias = -0.0001;
+					dirLight.intensity = 0.75;
+					scene.add( dirLight );
+
+	var shadowHelper = new THREE.CameraHelper( dirLight.shadow.camera );
+	scene.add( shadowHelper );	
 
 }
 
@@ -236,7 +277,7 @@ function animate() {
 
 
 function set_raycaster_targets(uuids, empty_list=true){
-	console.log(`Setting raycaster targets for ${uuids}`);
+	// console.log(`Setting raycaster targets for ${uuids}`);
 
 	if (empty_list) {
 		raycasting_targets = [];
@@ -389,7 +430,12 @@ function loadGroundPlane() {
 	geometry.rotateX( - Math.PI / 2);
 	color = d3.interpolateOrRd(0)
 	var material = new THREE.MeshPhongMaterial( { color: color, specular: color, shininess: 0, flatShading: false, transparent: false, opacity: 1} );
+
+
 	var plane = new THREE.Mesh( geometry, material );
+	plane.receiveShadow = true;
+
+	plane.position.y += 120;
 	scene.add( plane );
 
 }
@@ -412,7 +458,11 @@ function loadGeomFromOutline(k_obj) {
 
 	var depth = 110
 	var material = new THREE.MeshPhongMaterial( { color: color, specular: 0x111111, shininess: 0, flatShading: false, transparent: true, opacity: 0} );
-
+	// var material = new THREE.MeshPhongMaterial( {
+	// 				color: 0x999999,
+	// 				shininess: 0,
+	// 				specular: 0x111111
+	// 			} );
 
 	if (k_obj.kind === 'Room') {
 		console.log("room depth")
@@ -431,8 +481,8 @@ function loadGeomFromOutline(k_obj) {
 	mesh.rotation.set( - Math.PI / 2, 0, - Math.PI / 2 );
 	mesh.scale.set( 1, 1, 1 );
 
-	mesh.castShadow = true;
-	mesh.receiveShadow = true;
+	mesh.castShadow = false;
+	mesh.receiveShadow = false;
 
 	scene.add( mesh );
 	uuids[mesh.uuid] = k_obj;
@@ -447,7 +497,6 @@ function loadGeomFromOutline(k_obj) {
 	if (mode == 'infections') {
 		infected_uuids.push(mesh.uuid)
 	} 
-
 
 	tweenOpacity(mesh, 1, 1000);
 
@@ -500,6 +549,13 @@ function tweenOpacity(object, new_opacity, duration) {
 	}, duration)
 	.easing(TWEEN.Easing.Quadratic.InOut)
 	.start();
+
+	if (new_opacity > 0.5) {
+		object.castShadow = true;	
+	} else {
+		object.castShadow = false;
+	}
+
 }
 
 
@@ -513,14 +569,17 @@ function updateObjectOpacities() {
 		if (test_level > cur_level - 1) {
 			visible = false;
 			new_opacity = 1;
+			castShadow = true;
 		} else {
 			visible = true;
 			// new_opacity = 0.125;
 			new_opacity = 0.095;
+			castShadow = false;
 		}
 
 		const object = scene.getObjectByProperty('uuid', k);
 		object.visible = visible;
+		object.castShadow = castShadow;
 		tweenOpacity(object, new_opacity, 400);
 	});
 }
@@ -528,17 +587,15 @@ function updateObjectOpacities() {
 
 function get_rooms_from_level(level){
 	console.log(`Getting rooms from level ${level}`)
-	// console.log(room_objs)
 
 	room_uuids = [];
 	$.each(room_objs, function(k,v) {
-		// if (v['building'] === building) {
-		if (true) {	
-			if (v['level'] === `${level}`) {
-				loadGeomFromOutline(v)
-			}
+		if (v['level'] === `${level}`) {
+			loadGeomFromOutline(v)
 		}
 	})
+
+	// Update the scene objects that the raycaster will find
 	set_raycaster_targets(room_uuids);
 }
 
@@ -657,7 +714,7 @@ function init() {
 	$("#infectedRooms").click(function() {set_mode('infections')} );
 	$("#viewPlan").click(viewPlan);
 	$("#viewBuildings").click(function() {set_mode('buildings')} );
-	$("#viewPatients").click(function() {console.log(raycasting_targets)} );
+	// $("#viewPatients").click(function() {console.log(SSAOPass)} );
 
 }
 
