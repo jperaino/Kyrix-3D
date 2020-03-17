@@ -30,6 +30,9 @@ building_uuids = [];
 infected_uuids = [];
 ground_plane_uuid = null;
 
+// Listener Helpers
+var mouse_down_intersected;
+
 // Colors
 var colors = {
 	'background': new THREE.Color( 0xffffff ),
@@ -236,6 +239,7 @@ function init_three_js() {
 	// Raycasting
 	raycaster = new THREE.Raycaster();
 	document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+	document.addEventListener( 'mousedown', onDocumentMouseDown, false );
 	document.addEventListener( 'click', onDocumentMouseClick, false);
 	// document.addEventListener( 'mousedown', viewPatients, false);
 
@@ -392,6 +396,19 @@ function onDocumentMouseMove(event){
 }
 
 
+function onDocumentMouseDown(event){
+
+	event.preventDefault();
+	raycaster.setFromCamera(mouse, camera);
+	var intersects = raycaster.intersectObjects(raycasting_targets);
+
+	if (intersects.length > 0) {
+		INTERSECTED = intersects[0].object
+		mouse_down_intersected = INTERSECTED;
+	}
+}
+
+
 function onDocumentMouseClick(event){
 	/* Handles mouse click events for three.js raycasting */
 	event.preventDefault();
@@ -401,14 +418,16 @@ function onDocumentMouseClick(event){
 	if (intersects.length > 0) {
 		INTERSECTED = intersects[0].object
 
-		if (mode !== 'infections') {
-			onGeometryClick(INTERSECTED.uuid)
-		} else {
-			// onDetailRoomClick(INTERSECTED.uuid)
-			console.log("not infections")
-			// viewPatients();
+		if (INTERSECTED === mouse_down_intersected) {
+
+			if (mode !== 'infections') {
+				onGeometryClick(INTERSECTED.uuid)
+			} else {
+				// onDetailRoomClick(INTERSECTED.uuid)
+				console.log("not infections")
+				// viewPatients();
+			}
 		}
-		
 	}
 }
 
@@ -721,6 +740,8 @@ function load_all_from_psql() {
 					room_objs.push(obj)
 				}
 			}
+
+			set_mode('buildings')
         }
     });
 }

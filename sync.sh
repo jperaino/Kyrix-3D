@@ -1,5 +1,7 @@
 #!/bin/bash
 
+browserify front-end/js/main.js > front-end/bundle.js
+
 # delete the folders first
 docker exec -it kyrix_kyrix_1 sh -c "rm -r /kyrix/front-end/js/*"
 docker exec -it kyrix_kyrix_1 sh -c "rm -r /kyrix/front-end/static/*"
