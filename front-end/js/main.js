@@ -27,6 +27,7 @@ level_uuids = [];
 room_uuids = [];
 building_uuids = [];
 infected_uuids = [];
+ground_plane_uuid = null;
 
 // Colors
 var colors = {
@@ -62,6 +63,20 @@ function set_mode(new_mode, level=null) {
 
 }
 
+
+function toggle_ground_plane(b) {
+
+	const ground_plane = scene.getObjectByProperty('uuid', ground_plane_uuid);
+
+	if (b) {
+		tweenOpacity(ground_plane, 1, 400);
+	} else {
+		tweenOpacity(ground_plane, 0, 400);
+	}
+
+}
+
+
 function mode_to_all_buildings() {
 	mode = 'buildings'
 
@@ -74,12 +89,16 @@ function mode_to_all_buildings() {
 		const object = scene.getObjectByProperty('uuid', k);
 		tweenOpacity(object, 1, 400);
 	})
+
+	toggle_ground_plane(true);
 }
 
 
 function mode_to_level(level) {
 	mode = 'level'
 	set_level(level);
+
+	toggle_ground_plane(false);
 }
 
 
@@ -96,6 +115,8 @@ function mode_to_infections() {
 	tweenCamera(camera, [12605, 4603, 14960], 1500, target=[17725, 0, 12565])
 
 	set_level(25)
+
+	toggle_ground_plane(false);
 
 	$.each(room_objs, function(k,v) {
 		if (v['infections'] > 0) {
@@ -235,6 +256,10 @@ function init_three_js() {
 	light.intensity = 0.3;
 	scene.add( light );
 
+	// Fog
+	scene.fog = new THREE.Fog(0xffffff, 5000, 50000);
+
+
 	// Window resize listener
 	window.addEventListener( 'resize', onWindowResize, false );
 
@@ -244,23 +269,26 @@ function init_three_js() {
 
 	var dirLight = new THREE.DirectionalLight( 0xFFFFFF, 1 );
 					dirLight.name = 'Dir. Light';
-					dirLight.position.set( 10000, 15000, 17000 );
+					// dirLight.position.set( 10000, 15000, 17000 );
+					dirLight.position.set(8356, 8807, 20395);
+					dirLight.target.position.set(16487, 0, 14371);
 					dirLight.castShadow = true;
 					dirLight.shadow.camera.near = 0.1;
 					dirLight.shadow.camera.far = 50000;
 					dirLight.shadow.camera.right = 20000;
 					dirLight.shadow.camera.left = - 10000;
-					dirLight.shadow.camera.top	= 10000;
+					dirLight.shadow.camera.top	= 20000;
 					dirLight.shadow.camera.bottom = - 30000;
-					dirLight.shadow.mapSize.width = 512;
-					dirLight.shadow.mapSize.height = 512;
-					dirLight.shadow.radius = 3;
+					dirLight.shadow.mapSize.width = 512*4;
+					dirLight.shadow.mapSize.height = 512*4;
+					dirLight.shadow.radius = 2;
 					dirLight.shadow.bias = -0.0001;
 					dirLight.intensity = 0.75;
 					scene.add( dirLight );
+					scene.add( dirLight.target );
 
-	var shadowHelper = new THREE.CameraHelper( dirLight.shadow.camera );
-	scene.add( shadowHelper );	
+	// var shadowHelper = new THREE.CameraHelper( dirLight.shadow.camera );
+	// scene.add( shadowHelper );	
 
 }
 
@@ -429,7 +457,7 @@ function loadGroundPlane() {
 	var geometry = new THREE.PlaneGeometry( 200000, 200000, 32 );
 	geometry.rotateX( - Math.PI / 2);
 	color = d3.interpolateOrRd(0)
-	var material = new THREE.MeshPhongMaterial( { color: color, specular: color, shininess: 0, flatShading: false, transparent: false, opacity: 1} );
+	var material = new THREE.MeshPhongMaterial( { color: color, specular: color, shininess: 0, flatShading: false, transparent: true, opacity: 1} );
 
 
 	var plane = new THREE.Mesh( geometry, material );
@@ -437,6 +465,8 @@ function loadGroundPlane() {
 
 	plane.position.y += 120;
 	scene.add( plane );
+
+	ground_plane_uuid = plane.uuid;
 
 }
 
@@ -482,7 +512,7 @@ function loadGeomFromOutline(k_obj) {
 	mesh.scale.set( 1, 1, 1 );
 
 	mesh.castShadow = false;
-	mesh.receiveShadow = false;
+	mesh.receiveShadow = true;
 
 	scene.add( mesh );
 	uuids[mesh.uuid] = k_obj;
@@ -495,6 +525,7 @@ function loadGeomFromOutline(k_obj) {
 	}
 
 	if (mode == 'infections') {
+		mesh.receiveShadow = false;
 		infected_uuids.push(mesh.uuid)
 	} 
 
@@ -573,7 +604,7 @@ function updateObjectOpacities() {
 		} else {
 			visible = true;
 			// new_opacity = 0.125;
-			new_opacity = 0.095;
+			new_opacity = 0.075;
 			castShadow = false;
 		}
 
