@@ -1,109 +1,14 @@
-console.log("Loaded main.js");
+// main.js 
 
-// REQUIREMENTS ===================================================================
-const THREE = require('three');
-const OrbitControls = require('three-orbitcontrols');
-const STLLoader = require('three-stl-loader')(THREE);
-
-
-// PROPERTIES ===================================================================
-
-// State properties
-var mode = 'buildings'
-cur_levels = [];
-
-// Three.js Lists
-level_uuids = [];
-room_uuids = [];
-building_uuids = [];
-infected_uuids = [];
-
-// Colors
-var colors = {
-	'background': new THREE.Color( 0xEEEEEE ),
-	'selected_hex': 0x0000FF
-};
-
-// Raycasting
-var raycasting_targets = [];
-
-
-// MODE HANDLING ===================================================================
-
-function set_mode(new_mode, level=null) {
-	/* Given a string containing a new mode, performs update functions to toggle mode */
-	console.log(`Changing mode to ${new_mode}`)
-
-	switch(new_mode){
-		case 'buildings':
-			mode_to_all_buildings();
-			set_raycaster_targets(level_uuids);
-			break;
-		case 'level':
-			mode_to_level(level);
-			break;
-		case 'infections':
-			mode_to_infections();
-			set_raycaster_targets(infected_uuids);
-			break;
-		default:
-			console.log(`ERROR! No mode called ${new_mode}`)
-	}
-
-	// update_raycasting_targets(new_mode)
-}
-
-function mode_to_all_buildings() {
-	mode = 'buildings'
-
-	// Archive
-	destroyEverything()
-	set_level([]);
-	$("#level-label").text(`Showing all levels`)
-
-	$.each(uuids, function(k, v) {
-		const object = scene.getObjectByProperty('uuid', k);
-		tweenOpacity(object, 1, 400);
-	})
-}
-
-
-function mode_to_level(level) {
-	mode = 'level'
-	set_level(level);
-}
-
-
-function mode_to_infections() {
-	mode = 'infections'
-
-	// Archive
-	$("#room_body").empty();
-	// set_mode('infections')
-
-	console.log("Viewing infected rooms");
-	$("#level-label").text(`Showing infected rooms.`)
-
-	tweenCamera(camera, [12605, 4603, 14960], 1500, target=[17725, 0, 12565])
-
-	set_level(25)
-
-	$.each(room_objs, function(k,v) {
-		if (v['infections'] > 0) {
-			loadGeomFromOutline(v)
-
-			$("#room_body").append(
-				`<tr id='${v.room}'><th scope='row'>${v.room}</th><td>${v.building}</td><td>${v.level}</td><td>${v.infections}</td></tr>`
-				)
-		}
-	})
-
-	set_raycaster_targets(infected_uuids);
-
-}
-
+const THREE = require('three')
+const OrbitControls = require('three-orbitcontrols')
+const STLLoader = require('three-stl-loader')(THREE)
 
 // Properties ===================================================================
+console.log("Loaded main.js today")
+
+var mode = 'building'
+
 var objects = []
 var uuids = {}
 
@@ -128,11 +33,7 @@ var visited_rooms = ['818', '509', '530J', '568', 'G01', '104']
 // UPDATE METHODS ===================================================================
 
 function set_level(x) {
-
-	// If no levels are provided, set the level to 26
-	if (x === []) {
-		x = 26;
-	}
+	console.log("updating level")
 
 	int_x = parseInt(x)
 	str_x = `${int_x}`
@@ -143,8 +44,6 @@ function set_level(x) {
 	get_rooms_from_level(cur_level);
 
 	$("#level-label").text(`Current Level: ${str_x}`)
-
-
 }
 
 
@@ -157,12 +56,14 @@ function checkKey(e) {
 	if (e['key'] === "ArrowUp") {
 		console.log("ARROW UP")
 		console.log(cur_level + 1);
-		set_mode('level', level=cur_level + 1)
+		set_level(cur_level + 1);
 	} else if (e['key'] === "ArrowDown") {
 		console.log("ARROW DOWN")
 		// console.log(cur_level -1);
-		set_mode('level', level=cur_level - 1)
+		set_level(cur_level - 1);
 	}
+
+	// console.log(e)
 }
 
 
@@ -174,7 +75,7 @@ function init_three_js() {
 
 	// Scene
 	scene = new THREE.Scene();
-	scene.background = colors.background;
+	scene.background = new THREE.Color( 0xEEEEEE );
 
 	// Renderer
 	renderer = new THREE.WebGLRenderer( { antialias: true } );
@@ -201,7 +102,7 @@ function init_three_js() {
 	raycaster = new THREE.Raycaster();
 	document.addEventListener( 'mousemove', onDocumentMouseMove, false );
 	document.addEventListener( 'click', onDocumentMouseClick, false);
-	// document.addEventListener( 'mousedown', viewPatients, false);
+	document.addEventListener( 'mousedown', viewPatients, false);
 
 	// Lights
 	var light = new THREE.DirectionalLight( 0xFAEBD7 );
@@ -235,32 +136,32 @@ function animate() {
 }
 
 
-function set_raycaster_targets(uuids, empty_list=true){
-	console.log(`Setting raycaster targets for ${uuids}`);
-
-	if (empty_list) {
-		raycasting_targets = [];
-	}
-
-	children = scene.children;
-	temp_children = [];
-	$.each(children, function(k,v){
-		if (uuids.includes(v.uuid)){
-			temp_children.push(v);
-		}
-	});
-
-	raycasting_targets = temp_children;
-}
-
-
-
 function render() {
 
 	// Find Raycasting Intersections
 	raycaster.setFromCamera(mouse, camera);
 
-	var intersects = raycaster.intersectObjects(raycasting_targets);
+	children = scene.children;
+
+	
+	if (mode === 'infections') {
+		
+		temp_children = []
+		$.each(children, function(k, v){
+			if (v.type === "Mesh") {
+				if (uuids[v.uuid].kind === 'Room') {
+					temp_children.push(v)
+				}
+			}
+		})
+		children = temp_children
+
+	}
+
+
+	var intersects = raycaster.intersectObjects(children);
+
+
 
 	if ( intersects.length > 0 ) {
 		if ( INTERSECTED != intersects[ 0 ].object ) {
@@ -269,7 +170,7 @@ function render() {
 			}
 			INTERSECTED = intersects[ 0 ].object;
 			INTERSECTED.currentHex = INTERSECTED.material.emissive.getHex();
-			INTERSECTED.material.emissive.setHex( colors.selected_hex );
+			INTERSECTED.material.emissive.setHex( 0x0000FF );
 			$("#highlighted-info").empty();
 
 			cur_k_obj = uuids[INTERSECTED.uuid];
@@ -326,7 +227,7 @@ function onDocumentMouseClick(event){
 	/* Handles mouse click events for three.js raycasting */
 	event.preventDefault();
 	raycaster.setFromCamera(mouse, camera);
-	var intersects = raycaster.intersectObjects(raycasting_targets);
+	var intersects = raycaster.intersectObjects(scene.children);
 
 	if (intersects.length > 0) {
 		INTERSECTED = intersects[0].object
@@ -336,11 +237,14 @@ function onDocumentMouseClick(event){
 		} else {
 			// onDetailRoomClick(INTERSECTED.uuid)
 			console.log("not infections")
-			// viewPatients();
+			viewPatients();
 		}
 		
 	}
 }
+
+
+
 
 
 function onGeometryClick(uuid) {
@@ -356,7 +260,7 @@ function onGeometryClick(uuid) {
 	$("#lower-console").text(text) 
 
 	viewRoomsFromLevel(k_obj);
-	mode_to_level(uuids[uuid]['level'])
+	set_level(uuids[uuid]['level'])
 	// updateObjectOpacities(uuid)
 }
 
@@ -413,7 +317,6 @@ function loadGeomFromOutline(k_obj) {
 	var depth = 110
 	var material = new THREE.MeshPhongMaterial( { color: color, specular: 0x111111, shininess: 0, flatShading: false, transparent: true, opacity: 0} );
 
-
 	if (k_obj.kind === 'Room') {
 		console.log("room depth")
 		depth = 120;
@@ -437,20 +340,8 @@ function loadGeomFromOutline(k_obj) {
 	scene.add( mesh );
 	uuids[mesh.uuid] = k_obj;
 
-
-	if (k_obj.kind === 'Level') {
-		level_uuids.push(mesh.uuid)
-	} else if (k_obj.kind === 'Room') {
-		room_uuids.push(mesh.uuid)
-	}
-
-	if (mode == 'infections') {
-		infected_uuids.push(mesh.uuid)
-	} 
-
-
+	// const object = scene.getObjectByProperty('uuid', mesh.uuid);
 	tweenOpacity(mesh, 1, 1000);
-
 }
 
 
@@ -530,7 +421,6 @@ function get_rooms_from_level(level){
 	console.log(`Getting rooms from level ${level}`)
 	// console.log(room_objs)
 
-	room_uuids = [];
 	$.each(room_objs, function(k,v) {
 		// if (v['building'] === building) {
 		if (true) {	
@@ -539,7 +429,6 @@ function get_rooms_from_level(level){
 			}
 		}
 	})
-	set_raycaster_targets(room_uuids);
 }
 
 
@@ -562,6 +451,8 @@ function viewRoomsFromLevel(level_obj) {
 		}
 	}
 }
+
+
 
 
 // UI Methods ===================================================================
@@ -611,8 +502,7 @@ function pageOnLoad() {
 
 
 function load_all_from_psql() {
-	/* Sends a http request to the kyrix backend and loads level geometries. 
-	Populates a list of level objects and room objects. */
+	console.log("here")
 
 	$.ajax({
         type: "GET",
@@ -630,34 +520,142 @@ function load_all_from_psql() {
 
 				} else if (obj.kind === 'Room') {
 					room_objs.push(obj)
+
 				}
+
 			}
         }
     });
+
 }
 
-
-// CAMERA UPDATES ===================================================================
 
 function viewPlan() {
 	$("#room_body").empty();
-	set_mode('plan')
+	mode = 'plan'
 
 	tweenCamera(camera, [16855, 13387, 13703], 1500, target=[16855, 0, 13703], )
-	mode_to_level(8);
+	set_level(8);
+
+}
+
+function viewBuildings(){
+	$("#room_body").empty();
+	mode = 'buildings'
+
+	destroyEverything()
+	set_level(26);
+	$("#level-label").text(`Showing all levels`)
+
+	$.each(uuids, function(k, v) {
+		const object = scene.getObjectByProperty('uuid', k);
+		tweenOpacity(object, 1, 400);
+	})
+
 }
 
 
+function viewInfectionRooms() {
+	$("#room_body").empty();
+	mode = 'infections'
+
+	console.log("Viewing infected rooms");
+	$("#level-label").text(`Showing infected rooms.`)
+
+	tweenCamera(camera, [12605, 4603, 14960], 1500, target=[17725, 0, 12565])
+
+	set_level(25)
+
+	$.each(room_objs, function(k,v) {
+		if (v['infections'] > 0) {
+			loadGeomFromOutline(v)
+
+			$("#room_body").append(
+				`<tr id='${v.room}'><th scope='row'>${v.room}</th><td>${v.building}</td><td>${v.level}</td><td>${v.infections}</td></tr>`
+				)
+		}
+	})
+}
+
+
+// function onDetailRoomClick(uuid) {
+// 	console.log(`Detail Room Clicked: ${uuid}`)
+// 	$("#room_body").empty();
+// 	mode = 'infections'
+
+// 	console.log("Viewing infected rooms");
+// 	$("#level-label").text(`Showing infected rooms.`)
+
+// 	// tweenCamera(camera, [12605, 4603, 14960], 1500, target=[17725, 0, 12565])
+
+// 	// set_level(25)
+// 	destroyEverything();
+
+// 	$.each(room_objs, function(k,v) {
+
+// 		try {
+// 			if (v['infections'] > 0) {
+
+// 				// console.log()
+
+// 				if (visited_rooms.includes(v['room'])) {
+
+// 					loadGeomFromOutline(v)
+
+// 					$("#room_body").append(
+// 						`<tr id='${v.room}'><th scope='row'>${v.room}</th><td>${v.building}</td><td>${v.level}</td><td>${v.infections}</td></tr>`
+// 						)
+// 				}
+// 			}
+// 		} catch {
+// 			console.log(v)
+// 		}
+
+// 		// console.log(v.room)
+		
+// 	})
+// }
+
+
+
+function viewPatients () {
+
+	if (mode === 'infections') {
+
+		$("#room_body").empty();
+		mode = 'patients'
+		$("#level-label").text(`Showing rooms patient interacted with`)
+
+		destroyEverything();
+		$.each(room_objs, function(k,v) {
+			if (visited_rooms.includes(v.room)) {
+				loadGeomFromOutline(v)
+
+				$("#room_body").append(
+					`<tr id='${v.room}'><th scope='row'>'${v.room}'</th><td>${v.building}</td><td>${v.level}</td><td>${v.infections}</td></tr>`
+					)
+			}
+		})
+
+
+	}
+}
+
+
+
+
 // Main Functions ===================================================================
+
+
 
 function init() {
 
 	init_three_js();
 	load_all_from_psql();
-	$("#infectedRooms").click(function() {set_mode('infections')} );
+	$("#infectedRooms").click(viewInfectionRooms);
 	$("#viewPlan").click(viewPlan);
-	$("#viewBuildings").click(function() {set_mode('buildings')} );
-	$("#viewPatients").click(function() {console.log(raycasting_targets)} );
+	$("#viewBuildings").click(viewBuildings);
+	$("#viewPatients").click(viewPatients);
 
 }
 
