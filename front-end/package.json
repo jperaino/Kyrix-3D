@@ -5,6 +5,7 @@
   "main": "index.js",
   "dependencies": {
     "bootstrap": "^4.4.1",
+    "d3": "^5.15.0",
     "mime-types": "^2.1.26",
     "pg": "^7.18.1",
     "three": "^0.113.2",

@@ -1,7 +1,6 @@
 const Transform = require("../../src/Transform").Transform;
 
 var mghTransform = new Transform(
-    // "SELECT * FROM geoms WHERE kind = 'Room';", 
     "SELECT * FROM geoms WHERE kind IN ('Room', 'Level');", 
     "mgh",
     "",
@@ -9,6 +8,24 @@ var mghTransform = new Transform(
     true
 );
 
+var activitiesTransform = new Transform(
+    "SELECT * FROM activities;", 
+    "mgh",
+    "",
+    [],
+    true
+);
+
+var peopleTransform = new Transform(
+    "SELECT * FROM people;", 
+    "mgh",
+    "",
+    [],
+    true
+);
+
 module.exports = {
-    mghTransform
+    mghTransform,
+    activitiesTransform,
+    peopleTransform
 };

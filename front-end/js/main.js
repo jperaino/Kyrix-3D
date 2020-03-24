@@ -4,16 +4,7 @@ console.log("Loaded main.js");
 const THREE = require('three');
 const OrbitControls = require('three-orbitcontrols');
 const STLLoader = require('three-stl-loader')(THREE);
-// const DAT = require('dat-gui')
-// const GUI = require('three-dat.gui')
-// const EffectComposer = require('three-effectcomposer')
-// const SSAOPass = require('three.ssaopass')
-
-// require('three.ssaopass')
-
-// console.log(SSAOPass)
-
-
+const d3 = require('d3');
 
 
 // PROPERTIES ===================================================================
@@ -27,7 +18,12 @@ level_uuids = [];
 room_uuids = [];
 building_uuids = [];
 infected_uuids = [];
+patient_uuids = [];
 ground_plane_uuid = null;
+
+// D3 Lists
+activities = [];
+people = [];
 
 // Listener Helpers
 var mouse_down_intersected;
@@ -60,10 +56,12 @@ function set_mode(new_mode, level=null) {
 			mode_to_infections();
 			set_raycaster_targets(infected_uuids);
 			break;
+		case 'patients':
+			mode_to_patients();
+			set_raycaster_targets(patient_uuids);
 		default:
 			console.log(`ERROR! No mode called ${new_mode}`)
 	}
-
 }
 
 
@@ -76,11 +74,11 @@ function toggle_ground_plane(b) {
 	} else {
 		tweenOpacity(ground_plane, 0, 400);
 	}
-
 }
 
 
 function mode_to_all_buildings() {
+	/* Performs actions to set the mode to 'buildings' */
 	mode = 'buildings'
 
 	// Archive
@@ -98,6 +96,7 @@ function mode_to_all_buildings() {
 
 
 function mode_to_level(level) {
+	/* Performs actions to set the mode to 'level' */
 	mode = 'level'
 	set_level(level);
 
@@ -106,6 +105,7 @@ function mode_to_level(level) {
 
 
 function mode_to_infections() {
+	/* Performs actions to set the mode to 'infections' */
 	mode = 'infections'
 
 	// Archive
@@ -132,6 +132,15 @@ function mode_to_infections() {
 	})
 
 	set_raycaster_targets(infected_uuids);
+}
+
+
+function mode_to_level(level) {
+	/* Performs actions to set the mode to 'patients' */
+	mode = 'patients'
+	set_level(level);
+
+	toggle_ground_plane(false);
 }
 
 
@@ -198,7 +207,6 @@ function checkKey(e) {
 }
 
 
-
 // THREE.JS Init ===================================================================
 
 function init_three_js() {
@@ -216,9 +224,6 @@ function init_three_js() {
 	renderer.shadowMap.type = THREE.VSMShadowMap;
 	renderer.setClearColor( 0xCCCCCC, 1 );
 	document.body.appendChild( renderer.domElement );
-
-
-	
 
 	// Camera
 	camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 50000 );
@@ -240,7 +245,7 @@ function init_three_js() {
 	document.addEventListener( 'mousemove', onDocumentMouseMove, false );
 	document.addEventListener( 'mousedown', onDocumentMouseDown, false );
 	document.addEventListener( 'click', onDocumentMouseClick, false);
-	// document.addEventListener( 'mousedown', viewPatients, false);
+	document.addEventListener( 'mousedown', viewPatients, false);
 
 	// Lights
 	var light = new THREE.DirectionalLight( 0xffffff );
@@ -714,9 +719,30 @@ function objectFromPSQL(data) {
 }
 
 
+function activityFromPSQL(data) {
+	/* Creates an object from a row of PSQL data */
 
-function pageOnLoad() {
-	console.log("Executed Page on Load")
+	var activity = {
+		id: data.id,
+		room: data.room,
+		person_id: data.person_id,
+		date: data.timestamp
+	}
+
+	return activity
+}
+
+
+function personFromPSQL(data) {
+	/* Creates an object from a row of PSQL data */
+	
+	var activity = {
+		id: data.id,
+		infected: data.infected,
+		role: data.role
+	}
+
+	return activity
 }
 
 
@@ -749,6 +775,47 @@ function load_all_from_psql() {
 }
 
 
+function load_activities() {
+	/* Sends a http request to the kyrix backend and loads level geometries. 
+	Populates a list of level objects and room objects. */
+
+	$.ajax({
+        type: "GET",
+        url: "/canvas",
+        data: "id=activities&predicate0=&predicate1=&predicate2=",
+        success: function(data) {
+        	x = JSON.parse(data).staticData[0]
+
+        	$.each(x, function(k, v) {
+        		activity = activityFromPSQL(v)
+        		activities.push(activity)
+        	})
+        }
+    });
+}
+
+
+function load_people() {
+	/* Sends a http request to the kyrix backend and loads level geometries. 
+	Populates a list of level objects and room objects. */
+
+	$.ajax({
+        type: "GET",
+        url: "/canvas",
+        data: "id=people&predicate0=&predicate1=&predicate2=",
+        success: function(data) {
+        	x = JSON.parse(data).staticData[0]
+
+        	$.each(x, function(k, v) {
+        		person = personFromPSQL(v)
+        		people.push(person)
+        	})
+
+        	console.log(people)
+        }
+    });
+}
+
 // CAMERA UPDATES ===================================================================
 
 function viewPlan() {
@@ -765,11 +832,12 @@ function viewPlan() {
 function init() {
 
 	init_three_js();
+	load_activities();
+	load_people();
 	load_all_from_psql();
 	$("#infectedRooms").click(function() {set_mode('infections')} );
 	$("#viewPlan").click(viewPlan);
 	$("#viewBuildings").click(function() {set_mode('buildings')} );
-	// $("#viewPatients").click(function() {console.log(SSAOPass)} );
 
 }
 

@@ -21,7 +21,6 @@
 	</head>
 
 	<body>
- 
 		<div id="debug-info">
 			<h2>Massachusetts General Hospital</h2>
 			<p id=level-label>Viewing all levels</p>
@@ -30,22 +29,11 @@
 			<button type="button" class="btn btn-primary btn-sm" id="viewPlan">Plan</button>
 			<button type="button" class="btn btn-primary btn-sm" id="infectedRooms">Infected Rooms</button>
 			<button type="button" class="btn btn-primary btn-sm" id="viewPatients">Patients</button>
-	
-			<!-- <div class="btn-group btn-group-toggle btn-group-sm" data-toggle="buttons">
-			  <label class="btn btn-primary active layer-toggle" data-layer="building">
-			    <input type="radio" name="options" id="option1" checked > Building
-			  </label>
-			  <label class="btn btn-primary layer-toggle" data-layer="levels">
-			    <input type="radio" name="options" id="option2" > Levels
-			  </label>
-			  <label class="btn btn-primary layer-toggle" data-layer="rooms">
-			    <input type="radio" name="options" id="option3" > Rooms
-			  </label>
-			</div> -->
+
 
 		</div>	
 
-		<div id="room-table-div">
+<!-- 		<div id="room-table-div">
 			<h3>Rooms</h3>
 			<table class="table table-sm">
 			  <thead>
@@ -57,39 +45,34 @@
 			    </tr>
 			  </thead>
 			  <tbody id='room_body'>
-			  		<!-- <tr class="table-primary"><th scope='row'>Room</th><td>v.building</td><td>v.level</td><td>v.infections</td></tr> -->
 			  </tbody>
 			</table>
-		</div>
+		</div> -->
 
 
 
 		<div id="highlighted-info">
 		</div>
 
+<!-- 
+		<div id="tooltip">Hello</div> -->
 
-		<div id="bottom-alert">
+<!-- 		<div id="bottom-alert">
 			<p id=camera-pos>Camera: None</p>
 			<p id=camera-look>Looking at:</p>
-			<!-- <p id="lower-console">...</p> -->
-		</div>
+		</div> -->
+
+		<div id="three-container"></div>
 
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.15.0/d3.js"></script>
  		<script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/16.3.5/Tween.min.js"></script>
 
 		<!-- Bootstrap Dependencies -->
-<!--		<script src="https://code.jquery.com/jquery-3.4.1.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>-->
 		<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
 		<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
 		
 		<script src="bundle.js"></script>
-		<script src="js/three-env.js"></script>
-		<script src="js/test.js"></script>
-		<script src="js/main.js"></script>
 
-		<script>
-            $(document).ready(pageOnLoad());
-        </script>
 
 	</body>
 
