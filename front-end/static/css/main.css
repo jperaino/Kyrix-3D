@@ -31,6 +31,22 @@
     box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
 }
 
+#people{
+    position: fixed;
+    top: 30px;
+    bottom: 30px;
+    /*height: 30vh;*/
+    right:2%;
+    width: 30vw;
+    padding: 15px;
+    overflow-y: auto;
+    z-index: 10;
+    background-color: rgba(255,255,255,0.5);
+    opacity: 100%;
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+    display: none;
+}
+
 #three-container{
     width: 300px;
     z-index: -10;
@@ -44,4 +60,10 @@
     z-index: 10;
     background-color: white;
     box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+}
+
+.person_row:hover {
+
+    background-color: rgba(240,240,240,0.5);
+
 }

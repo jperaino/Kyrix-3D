@@ -57,9 +57,10 @@ function set_mode(new_mode, level=null) {
 			mode_to_infections();
 			set_raycaster_targets(infected_uuids);
 			break;
-		case 'patients':
-			mode_to_patients();
+		case 'people':
+			mode_to_people();
 			set_raycaster_targets(patient_uuids);
+			break;
 		default:
 			console.log(`ERROR! No mode called ${new_mode}`)
 	}
@@ -136,12 +137,30 @@ function mode_to_infections() {
 }
 
 
-function mode_to_level(level) {
-	/* Performs actions to set the mode to 'patients' */
-	mode = 'patients'
-	set_level(level);
 
-	toggle_ground_plane(false);
+
+function mode_to_people() {
+	/* Performs actions to set the mode to 'people' */
+	mode = 'people';
+
+	// Show the window
+	document.getElementById("people").style.display = "block";
+
+	// Add rows
+	d3.select('#people_body')
+		.selectAll('tr')
+		.data(people)
+		.join('tr')
+			.html(d => `<th scope='row'>${d.id}</th><th scope='row'>${d.role}</th><td>${d.infected}</td>`)
+		.attr("class", "person_row")
+		.on("click", d => {
+			onPersonClick(d);
+		})
+}
+
+function onPersonClick(d){
+	console.log(d)
+
 }
 
 
@@ -246,7 +265,7 @@ function init_three_js() {
 	document.addEventListener( 'mousemove', onDocumentMouseMove, false );
 	document.addEventListener( 'mousedown', onDocumentMouseDown, false );
 	document.addEventListener( 'click', onDocumentMouseClick, false);
-	document.addEventListener( 'mousedown', viewPatients, false);
+	document.addEventListener( 'mousedown', viewPeople, false);
 
 	// Lights
 	var light = new THREE.DirectionalLight( 0xffffff );
@@ -433,7 +452,7 @@ function onDocumentMouseClick(event){
 			} else {
 				// onDetailRoomClick(INTERSECTED.uuid)
 				console.log("not infections")
-				// viewPatients();
+				// viewPeople();
 			}
 		}
 	}
@@ -454,7 +473,6 @@ function onGeometryClick(uuid) {
 
 	viewRoomsFromLevel(k_obj);
 	mode_to_level(uuids[uuid]['level'])
-	// updateObjectOpacities(uuid)
 }
 
 
@@ -516,11 +534,7 @@ function loadGeomFromOutline(k_obj) {
 
 	var depth = 110
 	var material = new THREE.MeshPhongMaterial( { color: color, specular: 0x111111, shininess: 0, flatShading: false, transparent: true, opacity: 0} );
-	// var material = new THREE.MeshPhongMaterial( {
-	// 				color: 0x999999,
-	// 				shininess: 0,
-	// 				specular: 0x111111
-	// 			} );
+
 
 	if (k_obj.kind === 'Room') {
 		console.log("room depth")
@@ -682,8 +696,6 @@ function viewRoomsFromLevel(level_obj) {
 
 // UI Methods ===================================================================
 
-
-
 function updateCameraLabels(camera, controls) {
 	/* Updates UI labels with camera position and target location */
 
@@ -736,14 +748,14 @@ function activityFromPSQL(data) {
 
 function personFromPSQL(data) {
 	/* Creates an object from a row of PSQL data */
-	
-	var activity = {
+
+	var person = {
 		id: data.id,
 		infected: data.infected,
 		role: data.role
 	}
 
-	return activity
+	return person
 }
 
 
@@ -839,6 +851,7 @@ function init() {
 	$("#infectedRooms").click(function() {set_mode('infections')} );
 	$("#viewPlan").click(viewPlan);
 	$("#viewBuildings").click(function() {set_mode('buildings')} );
+	$("#viewPeople").click(function() {set_mode('people')} );
 
 }
 
