@@ -20,11 +20,16 @@ var building_uuids = [];
 var infected_uuids = [];
 var patient_uuids = [];
 var ground_plane_uuid = null;
+var detail_room = undefined;
 
 // D3 Lists
 var activities = [];
 var people = [];
-var person_room_uuids = {};
+var person_room_uuids = [];
+var room_count = 0;
+var cur_activities;
+
+var room_detail_svg;
 
 // Listener Helpers
 var mouse_down_intersected;
@@ -32,7 +37,8 @@ var mouse_down_intersected;
 // Colors
 var colors = {
 	'background': new THREE.Color( 0xffffff ),
-	'selected_hex': 0x0000FF
+	'selected_hex': 0x0000FF,
+	'unselected_hex': 0x000000
 };
 
 // Raycasting
@@ -41,7 +47,7 @@ var raycasting_targets = [];
 
 // MODE HANDLING ===================================================================
 
-function set_mode(new_mode, level=null) {
+function set_mode(new_mode, level=null, data_pack=undefined) {
 	/* Given a string containing a new mode, performs update functions to toggle mode */
 	console.log(`Changing mode to ${new_mode}`)
 
@@ -59,13 +65,28 @@ function set_mode(new_mode, level=null) {
 			break;
 		case 'people':
 			mode_to_people();
-			set_raycaster_targets(patient_uuids);
+			set_raycaster_targets(person_room_uuids);
+			break;
+		case 'person_rooms':
+			mode_to_person_rooms(data_pack);
+			set_raycaster_targets(person_room_uuids);
+			break;
+		case 'room_details':
+			mode_to_room_details();
 			break;
 		default:
 			console.log(`ERROR! No mode called ${new_mode}`)
 	}
+
+	mode = new_mode;
+	toggleWindowsOnMode()
 }
 
+
+function mode_to_person_rooms(data_pack){
+	console.log("SWITCHED MODE TO PERSON ROOMS")
+	console.log(data_pack);
+}
 
 function toggle_ground_plane(b) {
 
@@ -137,14 +158,12 @@ function mode_to_infections() {
 }
 
 
-
-
 function mode_to_people() {
 	/* Performs actions to set the mode to 'people' */
 	mode = 'people';
 
 	// Show the window
-	document.getElementById("people").style.display = "block";
+	// document.getElementById("people").style.display = "block";
 	set_level(25);
 	toggle_ground_plane(false);
 
@@ -155,7 +174,7 @@ function mode_to_people() {
 		.join('tr')
 			.html(d => `<th scope='row'>${d.id}</th><th scope='row'>${d.role}</th><td>${d.infected}</td>`)
 		.attr("class", "person_row")
-		.on("click", d => {
+		.on("mouseover", d => {
 			onPersonClick(d);
 		})
 
@@ -165,6 +184,101 @@ function mode_to_people() {
 		return (d.room === '818');
 	})
 	console.log(`Rooms Length (post-filter): ${filtered_rooms.length}`)
+}
+
+function mode_to_room_details(){
+
+	d3.select('#rd_name').text(`${detail_room.room}`)
+	d3.select('#rd_building').text(`${detail_room.building}`)
+	d3.select('#rd_level').text(`${detail_room.level}`)
+
+	var vert_offset = 150; 
+	var svg_w = $('#room_details').width();
+	var svg_h = $('#room_details').height() - vert_offset;
+	
+	console.log(svg_w)
+	console.log(svg_h)
+
+	var dataset = cur_activities;
+	console.log(dataset)
+
+	
+
+	// Add SVG
+	console.log(room_detail_svg)
+	if (room_detail_svg === undefined) {
+		room_detail_svg = d3.select("#svg-container").append("svg")
+			.attr("viewBox", [0, 0, svg_w, svg_h])
+	}
+
+	x = d3.scaleLinear()
+		.domain([0, d3.max(dataset, d => d.id)])
+		.range([0, svg_w])
+
+	console.log(x(1))
+
+	room_detail_svg.selectAll("circle")
+		.data(dataset)
+		.join(
+			enter => enter.append("circle")
+				.attr("cx", (d) => {return x(d.id)})
+				.attr("cy", (d) => {return x(50)})
+				.attr("r", 5)
+				.on("mouseover", (d) =>{
+					console.log(d)
+					spotlightRoom(d.room);
+				})
+				.on("mouseout", (d) =>{
+					
+					unspotlightRoom(d.room);
+				})
+					,
+			update => update,
+			exit => exit.remove()
+		)
+}
+
+
+function spotlightRoom(room_id) {
+	// console.log("mouseover");
+	// console.log(`room_id: ${room_id}`);
+
+	$.each(uuids, (k, v) => {
+
+		if (v.kind === 'Room') {
+			// console.log(`v.id: ${v.id}, kind: ${v.kind}`)
+
+			if (v.id.toString() === room_id.toString()) {
+
+				const object = scene.getObjectByProperty('uuid', k);
+				// object.material.color = '#ff6960';
+				object.material.emissive.setHex( colors.selected_hex )
+
+				console.log("MATCH")
+			}
+		}
+	})
+}
+
+function unspotlightRoom(room_id) {
+	console.log("mouseout")
+	// console.log(d)
+
+	$.each(uuids, (k, v) => {
+
+		if (v.kind === 'Room') {
+			// console.log(`v.id: ${v.id}, kind: ${v.kind}`)
+
+			if (v.id.toString() === room_id.toString()) {
+
+				const object = scene.getObjectByProperty('uuid', k);
+				// object.material.color = '#ff6960';
+				object.material.emissive.setHex( colors.unselected_hex )
+
+				console.log("MATCH")
+			}
+		}
+	})
 }
 
 
@@ -186,7 +300,7 @@ function onPersonClick(person){
 
 	// Create room data
 	var cur_rooms = rooms.filter((dd) => {
-		return room_array.includes(dd.room); 
+		return room_array.includes(dd.id.toString()); 
 	})
 
 	// Create rooms
@@ -199,47 +313,15 @@ function updatePersonRooms(data) {
 
 	console.log(data);
 
+	// Remove all other rooms from the scene
 	destroyEverything();
 
+	// Add geometry to the scene
 	$.each(data, (k, v) => {
 		loadPersonGeomFromOutline(v)
 	})
 
-	// d3.select("#dummy-container")
-	// 	.selectAll('dummy')
-	// 	.data(data)
-	// 	.join(
-	// 		enter => enter.append("dummy")
-	// 			.html(d => `${d.room}`)
-	// 			.call(d => {
-
-	// 				dd = d._groups[0];
-	// 				// console.log(dd)
-	// 				$.each(dd, (k, v) => {
-	// 					try {
-	// 						k_obj = v.__data__;
-	// 						loadPersonGeomFromOutline(k_obj);
-							
-	// 					} catch {
-	// 					}
-	// 				}) 
-	// 			}),
-	// 		update => update,
-	// 		exit => exit.remove()
-	// 			.call(d => {
-	// 				dd = d._groups[0];
-	// 				$.each(dd, (k, v) => {
-	// 					try{
-	// 						cur_uuid = person_room_uuids[v.__data__.room]
-	// 						const object = scene.getObjectByProperty('uuid', cur_uuid);
-	// 						object.geometry.dispose();
-	// 						object.material.dispose();
-	// 						scene.remove(object);
-	// 						delete person_room_uuids[v.room];
-	// 					} catch {}
-	// 				})
-	// 			})
-	// 	)
+	set_mode('person_rooms', data_pack=data)
 }
 
 
@@ -279,6 +361,7 @@ function loadPersonGeomFromOutline(k_obj) {
 
 	// uuids.push(mesh.uuid)
 	uuids[mesh.uuid] = k_obj
+	person_room_uuids.push(mesh.uuid)
 
 	// person_room_uuids[k_obj.room] = mesh.uuid;
 
@@ -509,7 +592,7 @@ function render() {
 			} else {
 				console.log(INTERSECTED)
 				console.log(INTERSECTED.uuid)
-				$(`#${room_name}`).addClass('table-danger')
+				// $(`#${room_name}`).addClass('table-danger')
 			}
 		}
 
@@ -569,12 +652,17 @@ function onDocumentMouseClick(event){
 		// Check if intersected object is same one when mouse clicked down.
 		if (INTERSECTED === mouse_down_intersected) {
 
-			if (mode !== 'infections') {
-				onGeometryClick(INTERSECTED.uuid)
-			} else {
-				// onDetailRoomClick(INTERSECTED.uuid)
+			if (mode === 'infections') {
+				set_mode('people')
 				console.log("not infections")
-				// viewPeople();
+			} else if (mode === 'people') {
+				set_mode('person_rooms')
+			} else if (mode === 'person_rooms' || mode === 'room_details') {
+				detail_room = uuids[INTERSECTED.uuid];
+				console.log(detail_room)
+				set_mode('room_details')
+			} else {
+				onGeometryClick(INTERSECTED.uuid)
 			}
 		}
 	}
@@ -834,10 +922,46 @@ function updateCameraLabels(camera, controls) {
 }
 
 
+function toggleWindowsOnMode() {
+
+	console.log("toggling windows")
+
+	switch(mode) {
+		case 'buildings':
+			document.getElementById("people").style.display = "none";
+			document.getElementById("room_details").style.display = "none";
+			break;
+		case 'level':
+			document.getElementById("people").style.display = "none";
+			document.getElementById("room_details").style.display = "none";
+			break;
+		case 'infections':
+			document.getElementById("people").style.display = "none";
+			document.getElementById("room_details").style.display = "none";
+			break;
+		case 'people':
+			document.getElementById("people").style.display = "block";
+			document.getElementById("room_details").style.display = "none";
+			break;
+		case 'person_rooms':
+			document.getElementById("people").style.display = "block";
+			document.getElementById("room_details").style.display = "none";
+			break;
+		case 'room_details':
+			document.getElementById("people").style.display = "none";
+			document.getElementById("room_details").style.display = "block";
+			break;
+		default:
+			console.log(`ERROR! No mode called ${mode}`)
+	}
+
+}
+
+
 // PostgreSQL Methods ===================================================================
 
 
-function objectFromPSQL(data) {
+function roomObjectFromPSQL(data) {
 	/* Creates an object from a row of PSQL data */
 
 	var object = {
@@ -846,9 +970,13 @@ function objectFromPSQL(data) {
 		room: data.room,
 		stl_fp: data.stl_fp,
 		infections: data.infections,
+		// infections: 0,
 		kind: data.kind,
-		outline: data.outline
+		outline: data.outline,
+		id: room_count
 	}
+
+	room_count += 1;
 
 	return object
 }
@@ -873,7 +1001,8 @@ function personFromPSQL(data) {
 
 	var person = {
 		id: data.id,
-		infected: data.infected,
+		// infected: data.infected,
+		infected: true,
 		role: data.role
 	}
 
@@ -881,7 +1010,7 @@ function personFromPSQL(data) {
 }
 
 
-function load_all_from_psql() {
+function load_rooms() {
 	/* Sends a http request to the kyrix backend and loads level geometries. 
 	Populates a list of level objects and room objects. */
 
@@ -893,7 +1022,7 @@ function load_all_from_psql() {
         	x = JSON.parse(data).staticData[0]
 
             for (var i = 0; i < x.length; i++) {
-			    obj = objectFromPSQL(x[i])
+			    obj = roomObjectFromPSQL(x[i])
 
 				if (obj.kind === 'Level') {
 					level_objs.push(obj)
@@ -947,9 +1076,35 @@ function load_people() {
         	})
 
         	console.log(people)
+        	populate_infections();
         }
     });
 }
+
+
+// function populate_infections(){
+
+// 	$.each(people, (k, v_people) => {
+
+// 		if (v_people.infected) {
+			
+// 			$.each(activities, (kk, v_activity) => {
+// 				console.log(rooms)
+
+// 				$.each(rooms, (kkk, v_room) => {
+// 					console.log(v_room.id)
+// 					console.log(v_activity.room)
+
+// 					if (v_room.id === v_activity.room) {
+
+// 						console.log(v_room.infections)
+// 						v_room.infections += 1;
+// 					}
+// 				})
+// 			})
+// 		}
+// 	})
+// }
 
 // CAMERA UPDATES ===================================================================
 
@@ -967,9 +1122,10 @@ function viewPlan() {
 function init() {
 
 	init_three_js();
+	load_rooms();
 	load_activities();
 	load_people();
-	load_all_from_psql();
+	
 	$("#infectedRooms").click(function() {set_mode('infections')} );
 	$("#viewPlan").click(viewPlan);
 	$("#viewBuildings").click(function() {set_mode('buildings')} );
