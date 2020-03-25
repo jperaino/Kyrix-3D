@@ -263,8 +263,6 @@ function mode_to_room_details(){
 var formatTime = d3.timeFormat("%B %d, %Y (%I:%M PM)");
 
 function spotlightRoom(d) {
-	// console.log("mouseover");
-	// console.log(`room_id: ${room_id}`);
 
 	room = rooms[d.room]
 
@@ -284,11 +282,17 @@ function spotlightRoom(d) {
 				// object.material.color = '#ff6960';
 				object.material.emissive.setHex( colors.selected_hex )
 
+				tweenScale(object, 1.003, 500);
+				// var tweenScale = new TWEEN.tween(object.scale.y).to({y: 1.5}, 3000).easing(TWEEN.Easing.Cubic.Out).start();
+				// tweenScale;
+
 				console.log("MATCH")
 			}
 		}
 	})
 }
+
+
 
 function unspotlightRoom(room_id) {
 	console.log("mouseout")
@@ -304,6 +308,7 @@ function unspotlightRoom(room_id) {
 				const object = scene.getObjectByProperty('uuid', k);
 				// object.material.color = '#ff6960';
 				object.material.emissive.setHex( colors.unselected_hex )
+				tweenScale(object, 1, 500);
 
 				console.log("MATCH")
 			}
@@ -869,7 +874,18 @@ function tweenOpacity(object, new_opacity, duration) {
 	} else {
 		object.castShadow = false;
 	}
+}
 
+
+function tweenScale(object, new_scale, duration) {
+
+	new TWEEN.Tween(object.scale).to({
+		x:new_scale,
+		y:new_scale,
+		z:new_scale
+	}, duration)
+	.easing(TWEEN.Easing.Quadratic.InOut)
+	.start();
 }
 
 
