@@ -28,6 +28,7 @@ var people = [];
 var person_room_uuids = [];
 var room_count = 0;
 var cur_activities;
+var cur_person;
 
 var room_detail_svg;
 
@@ -188,11 +189,12 @@ function mode_to_people() {
 
 function mode_to_room_details(){
 
+	d3.select('#rd_person').text(`${cur_person}`)
 	d3.select('#rd_name').text(`${detail_room.room}`)
 	d3.select('#rd_building').text(`${detail_room.building}`)
 	d3.select('#rd_level').text(`${detail_room.level}`)
 
-	var vert_offset = 150; 
+	var vert_offset = 200; 
 	var svg_w = $('#room_details').width();
 	var svg_h = $('#room_details').height() - vert_offset;
 	
@@ -209,46 +211,74 @@ function mode_to_room_details(){
 	if (room_detail_svg === undefined) {
 		room_detail_svg = d3.select("#svg-container").append("svg")
 			.attr("viewBox", [0, 0, svg_w, svg_h])
+
+		g = room_detail_svg.append("g")
+
+		// room_detail_svg.append("g")
+		// 	.call(d3.axisBottom
+		// 	.scale(xScale))
 	}
 
-	x = d3.scaleLinear()
-		.domain([0, d3.max(dataset, d => d.id)])
-		.range([0, svg_w])
+	console.log(d3.min(dataset, d => d.date))
+	console.log(d3.max(dataset, d => d.date))
 
-	console.log(x(1))
+	var scale_padding = 10;
+
+	xScale = d3.scaleTime()
+		.domain([d3.min(dataset, d => d.date), d3.max(dataset, d => d.date)])
+		.range([0 + scale_padding, svg_w - scale_padding])
+
+
+	
+
+	// x = d3.scaleLinear()
+	// 	.domain([d3.min(dataset, d => d.date), d3.max(dataset, d => d.date)])
+	// 	.range([0, svg_w])
 
 	room_detail_svg.selectAll("circle")
 		.data(dataset)
 		.join(
 			enter => enter.append("circle")
-				.attr("cx", (d) => {return x(d.id)})
-				.attr("cy", (d) => {return x(50)})
+				.attr("cx", (d) => {return xScale(d.date)})
+				.attr("cy", (d) => {return 40})
 				.attr("r", 5)
 				.on("mouseover", (d) =>{
 					console.log(d)
-					spotlightRoom(d.room);
+					spotlightRoom(d);
 				})
 				.on("mouseout", (d) =>{
 					
 					unspotlightRoom(d.room);
 				})
+				.attr("class", "hover-circ")
 					,
 			update => update,
 			exit => exit.remove()
 		)
+
+	g.call(d3.axisBottom().scale(xScale))
 }
 
 
-function spotlightRoom(room_id) {
+var formatTime = d3.timeFormat("%B %d, %Y (%I:%M PM)");
+
+function spotlightRoom(d) {
 	// console.log("mouseover");
 	// console.log(`room_id: ${room_id}`);
+
+	room = rooms[d.room]
+
+	d3.select('#rd_name').text(`${room.room}`)
+	d3.select('#rd_building').text(`${room.building}`)
+	d3.select('#rd_level').text(`${room.level}`)
+	d3.select('#rd_time').text(`${formatTime(d.date)}`)
 
 	$.each(uuids, (k, v) => {
 
 		if (v.kind === 'Room') {
 			// console.log(`v.id: ${v.id}, kind: ${v.kind}`)
 
-			if (v.id.toString() === room_id.toString()) {
+			if (v.id.toString() === d.room.toString()) {
 
 				const object = scene.getObjectByProperty('uuid', k);
 				// object.material.color = '#ff6960';
@@ -285,6 +315,7 @@ function unspotlightRoom(room_id) {
 function onPersonClick(person){
 	/* Performs an action when a person is selected*/
 	console.log(person)
+	cur_person = person.id;
 
 	// Get activities for person
 	cur_activities = activities.filter( (dd) => {
@@ -989,9 +1020,10 @@ function activityFromPSQL(data) {
 		id: data.id,
 		room: data.room,
 		person_id: data.person_id,
-		date: data.timestamp
+		date: new Date(data.timestamp)
 	}
 
+	console.log(activity)
 	return activity
 }
 
