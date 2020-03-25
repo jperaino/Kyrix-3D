@@ -11,19 +11,20 @@ const d3 = require('d3');
 
 // State properties
 var mode = 'buildings'
-cur_levels = [];
+var cur_levels = [];
 
 // Three.js Lists
-level_uuids = [];
-room_uuids = [];
-building_uuids = [];
-infected_uuids = [];
-patient_uuids = [];
-ground_plane_uuid = null;
+var level_uuids = [];
+var room_uuids = [];
+var building_uuids = [];
+var infected_uuids = [];
+var patient_uuids = [];
+var ground_plane_uuid = null;
 
 // D3 Lists
-activities = [];
-people = [];
+var activities = [];
+var people = [];
+var person_room_uuids = {};
 
 // Listener Helpers
 var mouse_down_intersected;
@@ -122,7 +123,7 @@ function mode_to_infections() {
 
 	toggle_ground_plane(false);
 
-	$.each(room_objs, function(k,v) {
+	$.each(rooms, function(k,v) {
 		if (v['infections'] > 0) {
 			loadGeomFromOutline(v)
 
@@ -144,6 +145,8 @@ function mode_to_people() {
 
 	// Show the window
 	document.getElementById("people").style.display = "block";
+	set_level(25);
+	toggle_ground_plane(false);
 
 	// Add rows
 	d3.select('#people_body')
@@ -155,12 +158,132 @@ function mode_to_people() {
 		.on("click", d => {
 			onPersonClick(d);
 		})
+
+	// Create a selection of rooms that the person has visited
+	console.log(`Rooms Length (pre-filter): ${rooms.length}`)
+	filtered_rooms = rooms.filter( (d) => {
+		return (d.room === '818');
+	})
+	console.log(`Rooms Length (post-filter): ${filtered_rooms.length}`)
 }
 
-function onPersonClick(d){
-	console.log(d)
+
+function onPersonClick(person){
+	/* Performs an action when a person is selected*/
+	console.log(person)
+
+	// Get activities for person
+	cur_activities = activities.filter( (dd) => {
+		return (dd.person_id === person.id)
+	})
+
+	// Get rooms for activities
+	var room_set = new Set();
+	$.each(cur_activities, (k,v) => {
+		room_set.add(v.room)
+	})
+	room_array = Array.from(room_set);
+
+	// Create room data
+	var cur_rooms = rooms.filter((dd) => {
+		return room_array.includes(dd.room); 
+	})
+
+	// Create rooms
+	updatePersonRooms(cur_rooms);
 
 }
+
+function updatePersonRooms(data) {
+	/* Given a list of current rooms, adds or removes geometries from the scene */
+
+	console.log(data);
+
+	destroyEverything();
+
+	$.each(data, (k, v) => {
+		loadPersonGeomFromOutline(v)
+	})
+
+	// d3.select("#dummy-container")
+	// 	.selectAll('dummy')
+	// 	.data(data)
+	// 	.join(
+	// 		enter => enter.append("dummy")
+	// 			.html(d => `${d.room}`)
+	// 			.call(d => {
+
+	// 				dd = d._groups[0];
+	// 				// console.log(dd)
+	// 				$.each(dd, (k, v) => {
+	// 					try {
+	// 						k_obj = v.__data__;
+	// 						loadPersonGeomFromOutline(k_obj);
+							
+	// 					} catch {
+	// 					}
+	// 				}) 
+	// 			}),
+	// 		update => update,
+	// 		exit => exit.remove()
+	// 			.call(d => {
+	// 				dd = d._groups[0];
+	// 				$.each(dd, (k, v) => {
+	// 					try{
+	// 						cur_uuid = person_room_uuids[v.__data__.room]
+	// 						const object = scene.getObjectByProperty('uuid', cur_uuid);
+	// 						object.geometry.dispose();
+	// 						object.material.dispose();
+	// 						scene.remove(object);
+	// 						delete person_room_uuids[v.room];
+	// 					} catch {}
+	// 				})
+	// 			})
+	// 	)
+}
+
+
+
+function loadPersonGeomFromOutline(k_obj) {
+
+	console.log("here")
+
+	vertices = []
+	raw_vertices = JSON.parse(k_obj["outline"])["vertices"]
+
+	$.each(raw_vertices, function(k, v) {
+		vertices.push(new THREE.Vector2(v.x, v.y))
+	})
+
+	var shape = new THREE.Shape(vertices);
+	shape.autoClose = true; 
+
+	color = d3.interpolateOrRd(.5)
+
+	var depth = 120
+	var material = new THREE.MeshPhongMaterial( { color: color, specular: 0x111111, shininess: 0, flatShading: false, transparent: false, opacity: 0} );
+
+	var extrudeSettings = {depth: depth, bevelEnabled: false};
+	var geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+
+	var mesh = new THREE.Mesh(geometry, material)
+
+	mesh.position.set( 0, k_obj.level * 120, 0 );
+	mesh.rotation.set( - Math.PI / 2, 0, - Math.PI / 2 );
+	mesh.scale.set( 1, 1, 1 );
+
+	mesh.castShadow = false;
+	mesh.receiveShadow = false;
+
+	scene.add( mesh );
+
+	// uuids.push(mesh.uuid)
+	uuids[mesh.uuid] = k_obj
+
+	// person_room_uuids[k_obj.room] = mesh.uuid;
+
+}
+
 
 
 // Properties ===================================================================
@@ -179,7 +302,7 @@ var mouse = new THREE.Vector2(), INTERSECTED;
 var radius = 100, theta = 0;
 
 var level_objs = [];
-var room_objs = [];
+var rooms = [];
 
 var cur_level = 25;
 
@@ -661,7 +784,7 @@ function get_rooms_from_level(level){
 	console.log(`Getting rooms from level ${level}`)
 
 	room_uuids = [];
-	$.each(room_objs, function(k,v) {
+	$.each(rooms, function(k,v) {
 		if (v['level'] === `${level}`) {
 			loadGeomFromOutline(v)
 		}
@@ -777,7 +900,7 @@ function load_all_from_psql() {
 					loadGeomFromOutline(obj)
 
 				} else if (obj.kind === 'Room') {
-					room_objs.push(obj)
+					rooms.push(obj)
 				}
 			}
 
