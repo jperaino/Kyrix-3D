@@ -1,1188 +1,201 @@
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
-console.log("Loaded main.js");
 
-// REQUIREMENTS ===================================================================
-const THREE = require('three');
-const OrbitControls = require('three-orbitcontrols');
-const STLLoader = require('three-stl-loader')(THREE);
+function get_geom(x) {
+
+	var geom = {
+		level: x.level,
+		building: x.building,
+		room: x.room,
+		infections: x.infections,
+		kind: x.kind,
+		outline: x.outline,
+	}
+
+	return geom;
+}
+
+
+
+
+// MODULE EXPORTS ===================================================================
+
+var d = {
+	get_geom: function(x){ return get_geom(x) },
+};
+
+
+module.exports = d
+},{}],2:[function(require,module,exports){
 const d3 = require('d3');
+
+const d = require('./data_helpers.js')
+const p = require('./properties.js')
+const p3 = require('./properties_three.js')
+const m3 = require('./methods_three.js')
+const modes = require('./modes.js')
 
 
 // PROPERTIES ===================================================================
 
-// State properties
 var mode = 'buildings'
-var cur_levels = [];
 
-// Three.js Lists
-var level_uuids = [];
-var room_uuids = [];
-var building_uuids = [];
-var infected_uuids = [];
-var patient_uuids = [];
-var ground_plane_uuid = null;
-var detail_room = undefined;
-
-// D3 Lists
-var activities = [];
-var people = [];
-var person_room_uuids = [];
-var room_count = 0;
-var cur_activities;
-var cur_person;
-
-var room_detail_svg;
-
-// Listener Helpers
-var mouse_down_intersected;
-
-// Colors
-var colors = {
-	'background': new THREE.Color( 0xffffff ),
-	'selected_hex': 0x0000FF,
-	'unselected_hex': 0x000000
+var uuids = {
+	ground_plane: undefined,
+	// geoms: []
 };
 
-// Raycasting
-var raycasting_targets = [];
+// var geoms = {
+// 	rooms: {},
+// 	levels: {}
+// }
 
+var scene_geoms = {};
 
-// MODE HANDLING ===================================================================
+// AJAX ===================================================================
 
-function set_mode(new_mode, level=null, data_pack=undefined) {
-	/* Given a string containing a new mode, performs update functions to toggle mode */
-	console.log(`Changing mode to ${new_mode}`)
+function load_geoms(kind, condition='') {
+	/* Given predicates, fetches geoms from the backend, constructs objects, and loads them into the scene */
 
-	switch(new_mode){
-		case 'buildings':
-			mode_to_all_buildings();
-			set_raycaster_targets(level_uuids);
-			break;
-		case 'level':
-			mode_to_level(level);
-			break;
-		case 'infections':
-			mode_to_infections();
-			set_raycaster_targets(infected_uuids);
-			break;
-		case 'people':
-			mode_to_people();
-			set_raycaster_targets(person_room_uuids);
-			break;
-		case 'person_rooms':
-			mode_to_person_rooms(data_pack);
-			set_raycaster_targets(person_room_uuids);
-			break;
-		case 'room_details':
-			mode_to_room_details();
-			break;
-		default:
-			console.log(`ERROR! No mode called ${new_mode}`)
+	// Form predicate
+	var predicate = `id=mgh&predicate0=(kind='${kind}')`;
+
+	if (condition !== '') {
+		console.log("here")
+		predicate = `id=mgh&predicate0=((kind='${kind}')and(${condition}))`
 	}
 
-	mode = new_mode;
-	toggleWindowsOnMode()
-}
 
+	$.ajax({
+        type: "GET",
+        url: "/canvas",
+        data: predicate,
+        success: function(data) {
+        	x = JSON.parse(data).staticData[0]
 
-function mode_to_person_rooms(data_pack){
-	console.log("SWITCHED MODE TO PERSON ROOMS")
-	console.log(data_pack);
-}
+        	for (var i = 0; i < x.length; i++) {
 
-function toggle_ground_plane(b) {
+        		geom = d.get_geom(x[i]);
+        		mesh = m3.mesh_from_geom(geom);
+        		geom.uuid = mesh.uuid;
+        		scene_geoms[geom.uuid] = geom;
+        		scene.add(mesh);
+        		tweenOpacity(geom, 1, 500);
 
-	const ground_plane = scene.getObjectByProperty('uuid', ground_plane_uuid);
-
-	if (b) {
-		tweenOpacity(ground_plane, 1, 400);
-	} else {
-		tweenOpacity(ground_plane, 0, 400);
-	}
-}
-
-
-function mode_to_all_buildings() {
-	/* Performs actions to set the mode to 'buildings' */
-	mode = 'buildings'
-
-	// Archive
-	destroyEverything()
-	set_level([]);
-	$("#level-label").text(`Showing all levels`)
-
-	$.each(uuids, function(k, v) {
-		const object = scene.getObjectByProperty('uuid', k);
-		tweenOpacity(object, 1, 400);
-	})
-
-	toggle_ground_plane(true);
-}
-
-
-function mode_to_level(level) {
-	/* Performs actions to set the mode to 'level' */
-	mode = 'level'
-	set_level(level);
-
-	toggle_ground_plane(false);
-}
-
-
-function mode_to_infections() {
-	/* Performs actions to set the mode to 'infections' */
-	mode = 'infections'
-
-	// Archive
-	$("#room_body").empty();
-	// set_mode('infections')
-
-	console.log("Viewing infected rooms");
-	$("#level-label").text(`Showing infected rooms.`)
-
-	tweenCamera(camera, [12605, 4603, 14960], 1500, target=[17725, 0, 12565])
-
-	set_level(25)
-
-	toggle_ground_plane(false);
-
-	$.each(rooms, function(k,v) {
-		if (v['infections'] > 0) {
-			loadGeomFromOutline(v)
-
-			$("#room_body").append(
-				`<tr id='${v.room}'><th scope='row'>${v.room}</th><td>${v.building}</td><td>${v.level}</td><td>${v.infections}</td></tr>`
-				)
-		}
-	})
-
-	set_raycaster_targets(infected_uuids);
-}
-
-
-function mode_to_people() {
-	/* Performs actions to set the mode to 'people' */
-	mode = 'people';
-
-	// Show the window
-	// document.getElementById("people").style.display = "block";
-	set_level(25);
-	toggle_ground_plane(false);
-
-	// Add rows
-	d3.select('#people_body')
-		.selectAll('tr')
-		.data(people)
-		.join('tr')
-			.html(d => `<th scope='row'>${d.id}</th><th scope='row'>${d.role}</th><td>${d.infected}</td>`)
-		.attr("class", "person_row")
-		.on("mouseover", d => {
-			onPersonClick(d);
-		})
-
-	// Create a selection of rooms that the person has visited
-	console.log(`Rooms Length (pre-filter): ${rooms.length}`)
-	filtered_rooms = rooms.filter( (d) => {
-		return (d.room === '818');
-	})
-	console.log(`Rooms Length (post-filter): ${filtered_rooms.length}`)
-}
-
-function mode_to_room_details(){
-
-	d3.select('#rd_person').text(`${cur_person}`)
-	d3.select('#rd_name').text(`${detail_room.room}`)
-	d3.select('#rd_building').text(`${detail_room.building}`)
-	d3.select('#rd_level').text(`${detail_room.level}`)
-
-	var vert_offset = 200; 
-	var svg_w = $('#room_details').width();
-	var svg_h = $('#room_details').height() - vert_offset;
-	
-	console.log(svg_w)
-	console.log(svg_h)
-
-	var dataset = cur_activities;
-	console.log(dataset)
-
-	
-
-	// Add SVG
-	console.log(room_detail_svg)
-	if (room_detail_svg === undefined) {
-		room_detail_svg = d3.select("#svg-container").append("svg")
-			.attr("viewBox", [0, 0, svg_w, svg_h])
-
-		g = room_detail_svg.append("g")
-
-		// room_detail_svg.append("g")
-		// 	.call(d3.axisBottom
-		// 	.scale(xScale))
-	}
-
-	console.log(d3.min(dataset, d => d.date))
-	console.log(d3.max(dataset, d => d.date))
-
-	var scale_padding = 10;
-
-	xScale = d3.scaleTime()
-		.domain([d3.min(dataset, d => d.date), d3.max(dataset, d => d.date)])
-		.range([0 + scale_padding, svg_w - scale_padding])
-
-
-	
-
-	// x = d3.scaleLinear()
-	// 	.domain([d3.min(dataset, d => d.date), d3.max(dataset, d => d.date)])
-	// 	.range([0, svg_w])
-
-	room_detail_svg.selectAll("circle")
-		.data(dataset)
-		.join(
-			enter => enter.append("circle")
-				.attr("cx", (d) => {return xScale(d.date)})
-				.attr("cy", (d) => {return 40})
-				.attr("r", 5)
-				.on("mouseover", (d) =>{
-					console.log(d)
-					spotlightRoom(d);
-				})
-				.on("mouseout", (d) =>{
-					
-					unspotlightRoom(d.room);
-				})
-				.attr("class", "hover-circ")
-					,
-			update => update,
-			exit => exit.remove()
-		)
-
-	g.call(d3.axisBottom().scale(xScale))
-}
-
-
-var formatTime = d3.timeFormat("%B %d, %Y (%I:%M PM)");
-
-function spotlightRoom(d) {
-
-	room = rooms[d.room]
-
-	d3.select('#rd_name').text(`${room.room}`)
-	d3.select('#rd_building').text(`${room.building}`)
-	d3.select('#rd_level').text(`${room.level}`)
-	d3.select('#rd_time').text(`${formatTime(d.date)}`)
-
-	$.each(uuids, (k, v) => {
-
-		if (v.kind === 'Room') {
-			// console.log(`v.id: ${v.id}, kind: ${v.kind}`)
-
-			if (v.id.toString() === d.room.toString()) {
-
-				const object = scene.getObjectByProperty('uuid', k);
-				// object.material.color = '#ff6960';
-				object.material.emissive.setHex( colors.selected_hex )
-
-				tweenScale(object, 1.003, 500);
-				// var tweenScale = new TWEEN.tween(object.scale.y).to({y: 1.5}, 3000).easing(TWEEN.Easing.Cubic.Out).start();
-				// tweenScale;
-
-				console.log("MATCH")
-			}
-		}
+        	}
+        }
 	})
 }
 
 
-
-function unspotlightRoom(room_id) {
-	console.log("mouseout")
-	// console.log(d)
-
-	$.each(uuids, (k, v) => {
-
-		if (v.kind === 'Room') {
-			// console.log(`v.id: ${v.id}, kind: ${v.kind}`)
-
-			if (v.id.toString() === room_id.toString()) {
-
-				const object = scene.getObjectByProperty('uuid', k);
-				// object.material.color = '#ff6960';
-				object.material.emissive.setHex( colors.unselected_hex )
-				tweenScale(object, 1, 500);
-
-				console.log("MATCH")
-			}
-		}
-	})
-}
-
-
-function onPersonClick(person){
-	/* Performs an action when a person is selected*/
-	console.log(person)
-	cur_person = person.id;
-
-	// Get activities for person
-	cur_activities = activities.filter( (dd) => {
-		return (dd.person_id === person.id)
-	})
-
-	// Get rooms for activities
-	var room_set = new Set();
-	$.each(cur_activities, (k,v) => {
-		room_set.add(v.room)
-	})
-	room_array = Array.from(room_set);
-
-	// Create room data
-	var cur_rooms = rooms.filter((dd) => {
-		return room_array.includes(dd.id.toString()); 
-	})
-
-	// Create rooms
-	updatePersonRooms(cur_rooms);
-
-}
-
-function updatePersonRooms(data) {
-	/* Given a list of current rooms, adds or removes geometries from the scene */
-
-	console.log(data);
-
-	// Remove all other rooms from the scene
-	destroyEverything();
-
-	// Add geometry to the scene
-	$.each(data, (k, v) => {
-		loadPersonGeomFromOutline(v)
-	})
-
-	set_mode('person_rooms', data_pack=data)
-}
-
-
-
-function loadPersonGeomFromOutline(k_obj) {
-
-	console.log("here")
-
-	vertices = []
-	raw_vertices = JSON.parse(k_obj["outline"])["vertices"]
-
-	$.each(raw_vertices, function(k, v) {
-		vertices.push(new THREE.Vector2(v.x, v.y))
-	})
-
-	var shape = new THREE.Shape(vertices);
-	shape.autoClose = true; 
-
-	color = d3.interpolateOrRd(.5)
-
-	var depth = 120
-	var material = new THREE.MeshPhongMaterial( { color: color, specular: 0x111111, shininess: 0, flatShading: false, transparent: false, opacity: 0} );
-
-	var extrudeSettings = {depth: depth, bevelEnabled: false};
-	var geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-
-	var mesh = new THREE.Mesh(geometry, material)
-
-	mesh.position.set( 0, k_obj.level * 120, 0 );
-	mesh.rotation.set( - Math.PI / 2, 0, - Math.PI / 2 );
-	mesh.scale.set( 1, 1, 1 );
-
-	mesh.castShadow = false;
-	mesh.receiveShadow = false;
-
-	scene.add( mesh );
-
-	// uuids.push(mesh.uuid)
-	uuids[mesh.uuid] = k_obj
-	person_room_uuids.push(mesh.uuid)
-
-	// person_room_uuids[k_obj.room] = mesh.uuid;
-
-}
-
-
-
-// Properties ===================================================================
-var objects = []
-var uuids = {}
-
-var building_k_objs = [];
-var level_fps = [];
-var level_k_objs = [];
-var room_fps = [];
-var room_k_objs = [];
-var visible_rooms = [];
+// THREE.JS ===================================================================
 
 var camera, controls, scene, renderer, raycaster;
-var mouse = new THREE.Vector2(), INTERSECTED;
-var radius = 100, theta = 0;
 
-var level_objs = [];
-var rooms = [];
+function init_three_js(){
+	/* Loads the three.js scene, elements, and adds it to the DOM */
 
-var cur_level = 25;
+	// Get scene
+	scene = p3.get_scene();
 
-var visited_rooms = ['818', '509', '530J', '568', 'G01', '104']
+	// Get renderer, camera, and controls
+	var p3_elements = p3.get_elements();
+	controls = p3_elements.controls
+	renderer = p3_elements.renderer
+	camera = p3_elements.camera
 
-// UPDATE METHODS ===================================================================
-
-function set_level(x) {
-
-	// If no levels are provided, set the level to 26
-	if (x === []) {
-		x = 26;
-	}
-
-	int_x = parseInt(x)
-	str_x = `${int_x}`
-
-	console.log(`Updating level to: ${str_x}`)
-	cur_level = int_x;
-	updateObjectOpacities(cur_level) 
-	get_rooms_from_level(cur_level);
-
-	$("#level-label").text(`Current Level: ${str_x}`)
-
-
-}
-
-
-// Listener Methods ===================================================================
-
-document.onkeydown = checkKey;
-
-function checkKey(e) {
-
-	if (e['key'] === "ArrowUp") {
-		console.log("ARROW UP")
-		console.log(cur_level + 1);
-		set_mode('level', level=cur_level + 1)
-	} else if (e['key'] === "ArrowDown") {
-		console.log("ARROW DOWN")
-		// console.log(cur_level -1);
-		set_mode('level', level=cur_level - 1)
-	}
-}
-
-
-// THREE.JS Init ===================================================================
-
-function init_three_js() {
-	/* Initializes three.js */
-
-	// Scene
-	scene = new THREE.Scene();
-	scene.background = colors.background;
-
-	// Renderer
-	renderer = new THREE.WebGLRenderer( { antialias: true } );
-	renderer.setPixelRatio( window.devicePixelRatio );
-	renderer.setSize( window.innerWidth, window.innerHeight );
-	renderer.shadowMap.enabled = true;
-	renderer.shadowMap.type = THREE.VSMShadowMap;
-	renderer.setClearColor( 0xCCCCCC, 1 );
+	// Add Renderer to scene
 	document.body.appendChild( renderer.domElement );
 
-	// Camera
-	camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 50000 );
-	camera.position.set( 10706, 5203, 15119 );
-
-	// Orbit Controls
-	controls = new OrbitControls( camera, renderer.domElement );
-	controls.enableDamping = true; 
-	controls.dampingFactor = 0.05;
-	controls.screenSpacePanning = false;
-	controls.minDistance = 100;
-	controls.maxDistance = 40000;
-	controls.maxPolarAngle = Math.PI / 2;
-	controls.easing = true;
-	controls.target.set(18022,0,12510)
-
-	// Raycasting
-	raycaster = new THREE.Raycaster();
-	document.addEventListener( 'mousemove', onDocumentMouseMove, false );
-	document.addEventListener( 'mousedown', onDocumentMouseDown, false );
-	document.addEventListener( 'click', onDocumentMouseClick, false);
-	document.addEventListener( 'mousedown', viewPeople, false);
-
-	// Lights
-	var light = new THREE.DirectionalLight( 0xffffff );
-	light.position.set( 100, 100, 100 );
-	light.intensity = 0.1
-	// light.castShadow = true;
-	scene.add( light );
-
-	var light = new THREE.DirectionalLight( 0xffffff );
-	light.position.set( 23584, 6652, 4096 );
-	// light.castShadow = true;
-	light.intensity = 0.1
-	scene.add( light );
-
-	var light = new THREE.AmbientLight( 0xffffff );
-	// light.castShadow = true;
-	light.intensity = 0.3;
-	scene.add( light );
-
-	// Fog
-	scene.fog = new THREE.Fog(0xffffff, 5000, 50000);
-
-
-	// Window resize listener
-	window.addEventListener( 'resize', onWindowResize, false );
-
-	// Load Ground Plane
-	loadGroundPlane();
-
-
-	var dirLight = new THREE.DirectionalLight( 0xFFFFFF, 1 );
-					dirLight.name = 'Dir. Light';
-					// dirLight.position.set( 10000, 15000, 17000 );
-					dirLight.position.set(8356, 8807, 20395);
-					dirLight.target.position.set(16487, 0, 14371);
-					dirLight.castShadow = true;
-					dirLight.shadow.camera.near = 0.1;
-					dirLight.shadow.camera.far = 50000;
-					dirLight.shadow.camera.right = 20000;
-					dirLight.shadow.camera.left = - 10000;
-					dirLight.shadow.camera.top	= 20000;
-					dirLight.shadow.camera.bottom = - 30000;
-					dirLight.shadow.mapSize.width = 512*4;
-					dirLight.shadow.mapSize.height = 512*4;
-					dirLight.shadow.radius = 2;
-					dirLight.shadow.bias = -0.0001;
-					dirLight.intensity = 0.75;
-					scene.add( dirLight );
-					scene.add( dirLight.target );
-
-	// var shadowHelper = new THREE.CameraHelper( dirLight.shadow.camera );
-	// scene.add( shadowHelper );	
-
+	// Add ground plane to scene
+	var ground_plane = p3.get_ground_plane();
+	scene.add(ground_plane);
+	uuids.ground_plane = ground_plane.uuid;
 }
 
 
-function animate() {
-	/* Required three.js animate() function */
+function animate(){
+	/* Required three.js animate function */
 
 	requestAnimationFrame(animate);
 	controls.update();
 	TWEEN.update();
-	updateCameraLabels(camera, controls)
 	render();
 }
 
 
-function set_raycaster_targets(uuids, empty_list=true){
-	// console.log(`Setting raycaster targets for ${uuids}`);
-
-	if (empty_list) {
-		raycasting_targets = [];
-	}
-
-	children = scene.children;
-	temp_children = [];
-	$.each(children, function(k,v){
-		if (uuids.includes(v.uuid)){
-			temp_children.push(v);
-		}
-	});
-
-	raycasting_targets = temp_children;
-}
-
-
-
-function render() {
-
-	// Find Raycasting Intersections
-	raycaster.setFromCamera(mouse, camera);
-
-	var intersects = raycaster.intersectObjects(raycasting_targets);
-
-	if ( intersects.length > 0 ) {
-		if ( INTERSECTED != intersects[ 0 ].object ) {
-			if ( INTERSECTED ) {
-				INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex );
-			}
-			INTERSECTED = intersects[ 0 ].object;
-			INTERSECTED.currentHex = INTERSECTED.material.emissive.getHex();
-			INTERSECTED.material.emissive.setHex( colors.selected_hex );
-			$("#highlighted-info").empty();
-
-			cur_k_obj = uuids[INTERSECTED.uuid];
-
-			console.log(cur_k_obj)
-			room_name = cur_k_obj['room']
-			building_name = cur_k_obj['building']
-			floor_name = cur_k_obj['level']
-			infections = cur_k_obj['infections']
-
-
-			if (mode !== 'infections') {
-				$("#room_body").empty();
-				$("#room_body").append(
-					`<tr><th scope='row'>${room_name}</th><td>${building_name}</td><td>${floor_name}</td><td>${infections}</td></tr>`
-					)
-			} else {
-				console.log(INTERSECTED)
-				console.log(INTERSECTED.uuid)
-				// $(`#${room_name}`).addClass('table-danger')
-			}
-		}
-
-
-	} else {
-		if ( INTERSECTED ) {
-			INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex )
-			if (mode !== 'infections') {
-				$("#highlighted-info").empty();
-				$("#room_body").empty();
-			} else {
-				cur_k_obj = uuids[INTERSECTED.uuid];
-				room_name = cur_k_obj['room'];
-				$(`#${room_name}`).removeClass('table-danger')
-			}
-		};
-		INTERSECTED = null;
-
-	}
+function render(){
+	/* Required three.js render function */
 
 	renderer.render( scene, camera );
 }
 
 
-function onDocumentMouseMove(event){
-	/* Updates mouse x and y coordinates for three.js raycasting */
-	event.preventDefault();
-	mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
-	mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
-}
-
-
-function onDocumentMouseDown(event){
-	/* Saves the identity of the object that the mouse was over when it is clicked
-	in order to verify that mouse click event is over same object. */
-
-	event.preventDefault();
-	raycaster.setFromCamera(mouse, camera);
-	var intersects = raycaster.intersectObjects(raycasting_targets);
-
-	if (intersects.length > 0) {
-		INTERSECTED = intersects[0].object
-		mouse_down_intersected = INTERSECTED;
-	}
-}
-
-
-function onDocumentMouseClick(event){
-	/* Handles mouse click events for three.js raycasting */
-	event.preventDefault();
-	raycaster.setFromCamera(mouse, camera);
-	var intersects = raycaster.intersectObjects(raycasting_targets);
-
-	if (intersects.length > 0) {
-		INTERSECTED = intersects[0].object
-
-		// Check if intersected object is same one when mouse clicked down.
-		if (INTERSECTED === mouse_down_intersected) {
-
-			if (mode === 'infections') {
-				set_mode('people')
-				console.log("not infections")
-			} else if (mode === 'people') {
-				set_mode('person_rooms')
-			} else if (mode === 'person_rooms' || mode === 'room_details') {
-				detail_room = uuids[INTERSECTED.uuid];
-				console.log(detail_room)
-				set_mode('room_details')
-			} else {
-				onGeometryClick(INTERSECTED.uuid)
-			}
-		}
-	}
-}
-
-
-function onGeometryClick(uuid) {
-	/* Performs actions to be performed when a geometry is clicked */
-	console.log(uuid)
-	k_obj = uuids[uuid]
-	building = k_obj['building']
-	level = k_obj['level']
-	room = k_obj['room']
-	
-	text = `Building: ${building} | Level: ${level} | Room: ${room}`
-
-	$("#lower-console").text(text) 
-
-	viewRoomsFromLevel(k_obj);
-	mode_to_level(uuids[uuid]['level'])
-}
-
-
-function onWindowResize() {
+function on_window_resize() {
 	/* Update rendera and camera on window resize */
+
 	camera.aspect = window.innerWidth / window.innerHeight;
 	camera.updateProjectionMatrix();
 	renderer.setSize( window.innerWidth, window.innerHeight );
 }
 
 
-// THREE.JS Methods ===================================================================
+// TWEENS ===================================================================
 
-function pickColor(k_obj) {
-    kind = k_obj['kind'];
+function tweenOpacity(geom, new_opacity, duration) {
+	/* Given a geom, tweens the opacity */
 
-    if (kind === 'Level') {
-    	return d3.interpolateOrRd(0);
-    	
-    } else {
-    	number = k_obj.infections;
-    	return d3.interpolateOrRd(number/5 *.8);
-    }
-}
+	mesh = scene.getObjectByProperty('uuid', geom.uuid);
 
-function loadGroundPlane() {
-
-	var geometry = new THREE.PlaneGeometry( 200000, 200000, 32 );
-	geometry.rotateX( - Math.PI / 2);
-	color = d3.interpolateOrRd(0)
-	var material = new THREE.MeshPhongMaterial( { color: color, specular: color, shininess: 0, flatShading: false, transparent: true, opacity: 1} );
-
-
-	var plane = new THREE.Mesh( geometry, material );
-	plane.receiveShadow = true;
-
-	plane.position.y += 120;
-	scene.add( plane );
-
-	ground_plane_uuid = plane.uuid;
-
-}
-
-
-function loadGeomFromOutline(k_obj) {
-
-	vertices = []
-	raw_vertices = JSON.parse(k_obj["outline"])["vertices"]
-
-	$.each(raw_vertices, function(k, v) {
-		vertices.push(new THREE.Vector2(v.x, v.y))
-	})
-
-	var shape = new THREE.Shape(vertices);
-	shape.autoClose = true; 
-
-	color = pickColor(k_obj);
-	// console.log(color)
-
-	var depth = 110
-	var material = new THREE.MeshPhongMaterial( { color: color, specular: 0x111111, shininess: 0, flatShading: false, transparent: true, opacity: 0} );
-
-
-	if (k_obj.kind === 'Room') {
-		console.log("room depth")
-		depth = 120;
-		material.transparent = false;
-	}
-
-
-	var extrudeSettings = {depth: depth, bevelEnabled: false};
-	var geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-
-	
-	var mesh = new THREE.Mesh(geometry, material)
-
-	mesh.position.set( 0, k_obj.level * 120, 0 );
-	mesh.rotation.set( - Math.PI / 2, 0, - Math.PI / 2 );
-	mesh.scale.set( 1, 1, 1 );
-
-	mesh.castShadow = false;
-	mesh.receiveShadow = true;
-
-	scene.add( mesh );
-	uuids[mesh.uuid] = k_obj;
-
-
-	if (k_obj.kind === 'Level') {
-		level_uuids.push(mesh.uuid)
-	} else if (k_obj.kind === 'Room') {
-		room_uuids.push(mesh.uuid)
-	}
-
-	if (mode == 'infections') {
-		mesh.receiveShadow = false;
-		infected_uuids.push(mesh.uuid)
-	} 
-
-	tweenOpacity(mesh, 1, 1000);
-
-}
-
-
-function destroyEverything(){
-	/* Destroy and dispose all objects in objects */
-	console.log("Destroy Everything")
-	
-	$.each(uuids, function (k, v) {
-		if (v['kind'] == 'Room') {
-			const object = scene.getObjectByProperty('uuid', k);
-			object.geometry.dispose();
-			object.material.dispose();
-			scene.remove(object);
-			delete uuids[k];
-		}	
-	});
-}
-
-
-function tweenCamera(camera, position, duration, target=null) {
-	/* Tweens the camera to a new position */
-
-	new TWEEN.Tween(camera.position).to({
-		x:position[0],
-		y:position[1],
-		z:position[2]
-	}, duration)
-	.easing(TWEEN.Easing.Quadratic.InOut)
-	.start();
-
-	if (target !== null) {
-		new TWEEN.Tween(camera.target).to({
-			x:target[0],
-			y:target[1],
-			z:target[2]
-		}, duration)
-		.easing(TWEEN.Easing.Quadratic.InOut)
-		.start();
-	}
-}
-
-
-function tweenOpacity(object, new_opacity, duration) {
-
-	new TWEEN.Tween(object.material).to({
+	new TWEEN.Tween(mesh.material).to({
 		opacity: new_opacity,
 	}, duration)
 	.easing(TWEEN.Easing.Quadratic.InOut)
 	.start();
 
 	if (new_opacity > 0.5) {
-		object.castShadow = true;	
+		mesh.castShadow = true;
 	} else {
-		object.castShadow = false;
-	}
-
-}
-
-
-function tweenScale(object, new_scale, duration) {
-
-	new TWEEN.Tween(object.scale).to({
-		x:new_scale,
-		y:new_scale,
-		z:new_scale
-	}, duration)
-	.easing(TWEEN.Easing.Quadratic.InOut)
-	.start();
-}
-
-
-function updateObjectOpacities() {
-	/*Given a uuid, fades all other objects of that type in the scene */
-	destroyEverything()
-
-	$.each(uuids, function (k, v) {
-		test_level = v['level']
-
-		if (test_level > cur_level - 1) {
-			visible = false;
-			new_opacity = 1;
-			castShadow = true;
-		} else {
-			visible = true;
-			// new_opacity = 0.125;
-			new_opacity = 0.075;
-			castShadow = false;
-		}
-
-		const object = scene.getObjectByProperty('uuid', k);
-		object.visible = visible;
-		object.castShadow = castShadow;
-		tweenOpacity(object, new_opacity, 400);
-	});
-}
-
-
-function get_rooms_from_level(level){
-	console.log(`Getting rooms from level ${level}`)
-
-	room_uuids = [];
-	$.each(rooms, function(k,v) {
-		if (v['level'] === `${level}`) {
-			loadGeomFromOutline(v)
-		}
-	})
-
-	// Update the scene objects that the raycaster will find
-	set_raycaster_targets(room_uuids);
-}
-
-
-function viewRoomsFromLevel(level_obj) {
-	console.log("View Rooms from Level")
-
-	var level = level_obj.level;
-	var building = level_obj.building;
-	var visible_rooms = [];
-
-	console.log(level)
-	console.log(building)
-
-	for (room in room_k_objs) {
-		console.log(room['level'])
-		if (room['level'] === level) {
-			if (room['building'] === building) {
-				console.log(room);
-			}
-		}
+		mesh.castShadow = false;
 	}
 }
 
 
-// UI Methods ===================================================================
+// UPDATE MODE ===================================================================
 
-function updateCameraLabels(camera, controls) {
-	/* Updates UI labels with camera position and target location */
+function set_clickable_objects(m) {
 
-	var cx = camera.position.x.toFixed(0)
-	var cy = camera.position.y.toFixed(0)
-	var cz = camera.position.z.toFixed(0)
+	clickable_objects = m.clickable;
 
-	var lx = controls.target.x.toFixed(0)
-	var ly = controls.target.y.toFixed(0)
-	var lz = controls.target.z.toFixed(0)
-
-	$("#camera-pos").text(`Camera: x: ${cx}, y: ${cy}, z: ${cz}`);
-	$("#camera-look").text(`Tartget: x: ${lx}, y: ${ly}, z: ${lz}`);
-}
-
-
-function toggleWindowsOnMode() {
-
-	console.log("toggling windows")
-
-	switch(mode) {
-		case 'buildings':
-			document.getElementById("people").style.display = "none";
-			document.getElementById("room_details").style.display = "none";
-			break;
-		case 'level':
-			document.getElementById("people").style.display = "none";
-			document.getElementById("room_details").style.display = "none";
-			break;
-		case 'infections':
-			document.getElementById("people").style.display = "none";
-			document.getElementById("room_details").style.display = "none";
-			break;
-		case 'people':
-			document.getElementById("people").style.display = "block";
-			document.getElementById("room_details").style.display = "none";
-			break;
-		case 'person_rooms':
-			document.getElementById("people").style.display = "block";
-			document.getElementById("room_details").style.display = "none";
-			break;
-		case 'room_details':
-			document.getElementById("people").style.display = "none";
-			document.getElementById("room_details").style.display = "block";
-			break;
-		default:
-			console.log(`ERROR! No mode called ${mode}`)
-	}
+	$.each()
 
 }
 
 
-// PostgreSQL Methods ===================================================================
+function update_mode_to(mode){
+
+	// Fetch mode properties
+	m = modes[mode];
+
+	console.log(m);
 
 
-function roomObjectFromPSQL(data) {
-	/* Creates an object from a row of PSQL data */
 
-	var object = {
-		level: data.level,
-		building: data.building,
-		room: data.room,
-		stl_fp: data.stl_fp,
-		infections: data.infections,
-		// infections: 0,
-		kind: data.kind,
-		outline: data.outline,
-		id: room_count
-	}
-
-	room_count += 1;
-
-	return object
 }
 
 
-function activityFromPSQL(data) {
-	/* Creates an object from a row of PSQL data */
-
-	var activity = {
-		id: data.id,
-		room: data.room,
-		person_id: data.person_id,
-		date: new Date(data.timestamp)
-	}
-
-	console.log(activity)
-	return activity
-}
-
-
-function personFromPSQL(data) {
-	/* Creates an object from a row of PSQL data */
-
-	var person = {
-		id: data.id,
-		// infected: data.infected,
-		infected: true,
-		role: data.role
-	}
-
-	return person
-}
-
-
-function load_rooms() {
-	/* Sends a http request to the kyrix backend and loads level geometries. 
-	Populates a list of level objects and room objects. */
-
-	$.ajax({
-        type: "GET",
-        url: "/canvas",
-        data: "id=mgh&predicate0=&predicate1=&predicate2=",
-        success: function(data) {
-        	x = JSON.parse(data).staticData[0]
-
-            for (var i = 0; i < x.length; i++) {
-			    obj = roomObjectFromPSQL(x[i])
-
-				if (obj.kind === 'Level') {
-					level_objs.push(obj)
-					loadGeomFromOutline(obj)
-
-				} else if (obj.kind === 'Room') {
-					rooms.push(obj)
-				}
-			}
-
-			set_mode('buildings')
-        }
-    });
-}
-
-
-function load_activities() {
-	/* Sends a http request to the kyrix backend and loads level geometries. 
-	Populates a list of level objects and room objects. */
-
-	$.ajax({
-        type: "GET",
-        url: "/canvas",
-        data: "id=activities&predicate0=&predicate1=&predicate2=",
-        success: function(data) {
-        	x = JSON.parse(data).staticData[0]
-
-        	$.each(x, function(k, v) {
-        		activity = activityFromPSQL(v)
-        		activities.push(activity)
-        	})
-        }
-    });
-}
-
-
-function load_people() {
-	/* Sends a http request to the kyrix backend and loads level geometries. 
-	Populates a list of level objects and room objects. */
-
-	$.ajax({
-        type: "GET",
-        url: "/canvas",
-        data: "id=people&predicate0=&predicate1=&predicate2=",
-        success: function(data) {
-        	x = JSON.parse(data).staticData[0]
-
-        	$.each(x, function(k, v) {
-        		person = personFromPSQL(v)
-        		people.push(person)
-        	})
-
-        	console.log(people)
-        	populate_infections();
-        }
-    });
-}
-
-
-// function populate_infections(){
-
-// 	$.each(people, (k, v_people) => {
-
-// 		if (v_people.infected) {
-			
-// 			$.each(activities, (kk, v_activity) => {
-// 				console.log(rooms)
-
-// 				$.each(rooms, (kkk, v_room) => {
-// 					console.log(v_room.id)
-// 					console.log(v_activity.room)
-
-// 					if (v_room.id === v_activity.room) {
-
-// 						console.log(v_room.infections)
-// 						v_room.infections += 1;
-// 					}
-// 				})
-// 			})
-// 		}
-// 	})
-// }
-
-// CAMERA UPDATES ===================================================================
-
-function viewPlan() {
-	$("#room_body").empty();
-	set_mode('plan')
-
-	tweenCamera(camera, [16855, 13387, 13703], 1500, target=[16855, 0, 13703], )
-	mode_to_level(8);
-}
-
-
-// Main Functions ===================================================================
+// MAIN METHODS ===================================================================
 
 function init() {
 
 	init_three_js();
-	load_rooms();
-	load_activities();
-	load_people();
-	
-	$("#infectedRooms").click(function() {set_mode('infections')} );
-	$("#viewPlan").click(viewPlan);
-	$("#viewBuildings").click(function() {set_mode('buildings')} );
-	$("#viewPeople").click(function() {set_mode('people')} );
+	load_geoms('Level');
+	load_geoms('Room', "level='8'")
+
+	window.addEventListener( 'resize', on_window_resize, false );
+
+	update_mode_to('buildings');
 
 }
-
 
 // MAIN ===================================================================
 
@@ -1192,7 +205,239 @@ animate();
 
 
 
-},{"d3":33,"three":36,"three-orbitcontrols":34,"three-stl-loader":35}],2:[function(require,module,exports){
+
+
+
+},{"./data_helpers.js":1,"./methods_three.js":3,"./modes.js":4,"./properties.js":5,"./properties_three.js":6,"d3":38}],3:[function(require,module,exports){
+const THREE = require('three');
+const p = require('./properties.js')
+
+
+
+// PROPERTIES ===================================================================
+
+
+
+// METHODS ===================================================================
+
+function mesh_from_geom(geom) {
+	/* Given a geom, returns a mesh to be added to the scene */
+
+	// Get the raw vertices
+	vertices = [];
+	raw_vertices = JSON.parse(geom['outline'])['vertices'];
+
+	// Populate vertices list
+	$.each(raw_vertices, (k,v) => {
+		vertices.push( new THREE.Vector2(v.x, v.y) );
+	})
+
+	var shape = new THREE.Shape(vertices);
+	shape.autoClose = true;
+
+	color = p.colors.background;
+
+	var depth = 110;
+	var material = new THREE.MeshPhongMaterial( { color: color, specular: 0x111111, shininess: 0, flatShading: false, transparent: true, opacity: 0} );
+
+	var extrude_settings = {depth: depth, bevelEnabled: false};
+	var geometry = new THREE.ExtrudeGeometry(shape, extrude_settings);
+
+	var mesh = new THREE.Mesh(geometry, material);
+
+	mesh.position.set( 0, geom.level * 120, 0);
+	mesh.rotation.set( - Math.PI / 2, 0, - Math.PI / 2 );
+	mesh.scale.set(1,1,1);
+
+	mesh.castShadow = false;
+	mesh.receiveShadow = true;
+
+	return mesh;
+
+}
+
+
+
+// MODULE EXPORTS ===================================================================
+
+var m3 = {
+	mesh_from_geom: function(geom){ return mesh_from_geom(geom) },
+	// get_elements: function() { return get_elements() },
+	// get_ground_plane: function() { return get_ground_plane() }
+};
+
+
+module.exports = m3
+},{"./properties.js":5,"three":40}],4:[function(require,module,exports){
+
+modes = {}
+
+
+modes['buildings'] = {
+
+	clickable: 'level',
+	ground_plane_on: true,
+	visible_divs: [],
+	color_scale: null,
+	room_filter: null, 
+	level_opacity: 1,
+	current_levels: [],
+
+}
+
+
+modes['level']
+
+
+
+
+
+module.exports = modes
+},{}],5:[function(require,module,exports){
+
+var colors = {
+	'background': 0xffffff,
+	'selected_hex': 0x0000FF,
+	'unselected_hex': 0x000000,
+	'light': 0xffffff,
+};
+
+
+
+// MODULE EXPORTS ===================================================================
+
+var p = {
+	colors: colors
+};
+
+
+module.exports = p
+},{}],6:[function(require,module,exports){
+const THREE = require('three');
+const OrbitControls = require('three-orbitcontrols');
+const p = require('./properties.js')
+
+
+
+// PROPERTY METHODS ===================================================================
+
+function get_scene () {
+	/* Returns a three.js scene object, including lights */
+
+	// Init Scene
+	scene = new THREE.Scene();
+	scene.background = p.colors.background;
+
+	// Add Fog
+	scene.fog = new THREE.Fog(p.colors.background, 5000, 50000);
+
+	// Add Lights
+	var light = new THREE.DirectionalLight( p.colors.light );
+		light.position.set( 100, 100, 100 );
+		light.intensity = 0.1
+		scene.add( light );
+
+	var light = new THREE.DirectionalLight( p.colors.light );
+		light.position.set( 23584, 6652, 4096 );
+		light.intensity = 0.1
+		scene.add( light );
+
+	var light = new THREE.AmbientLight( p.colors.light );
+		light.intensity = 0.3;
+		scene.add( light );
+
+	var dirLight = new THREE.DirectionalLight( p.colors.light, 1 );
+		dirLight.name = 'Dir. Light';
+		dirLight.position.set(8356, 8807, 20395);
+		dirLight.target.position.set(16487, 0, 14371);
+		dirLight.castShadow = true;
+		dirLight.shadow.camera.near = 0.1;
+		dirLight.shadow.camera.far = 50000;
+		dirLight.shadow.camera.right = 20000;
+		dirLight.shadow.camera.left = - 10000;
+		dirLight.shadow.camera.top	= 20000;
+		dirLight.shadow.camera.bottom = - 30000;
+		dirLight.shadow.mapSize.width = 512*4;
+		dirLight.shadow.mapSize.height = 512*4;
+		dirLight.shadow.radius = 2;
+		dirLight.shadow.bias = -0.0001;
+		dirLight.intensity = 0.75;
+		scene.add( dirLight );
+		scene.add( dirLight.target );
+
+	return scene;
+}
+
+
+
+function get_elements () {
+	/* Returns an object containing the three.js renderer, controls, and camera */
+
+	// Renderer
+	var renderer = new THREE.WebGLRenderer( { antialias: true } );
+	renderer.setPixelRatio( window.devicePixelRatio );
+	renderer.setSize( window.innerWidth, window.innerHeight );
+	renderer.shadowMap.enabled = true;
+	renderer.shadowMap.type = THREE.VSMShadowMap;
+	renderer.setClearColor( 0xCCCCCC, 1 );
+
+	// Camera
+	var camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 50000 );
+	camera.position.set( 10706, 5203, 15119 );
+
+	// Controls
+	var controls = new OrbitControls( camera, renderer.domElement );
+	controls.enableDamping = true; 
+	controls.dampingFactor = 0.05;
+	controls.screenSpacePanning = false;
+	controls.minDistance = 100;
+	controls.maxDistance = 40000;
+	controls.maxPolarAngle = Math.PI / 2;
+	controls.easing = true;
+	controls.target.set(18022,0,12510)
+
+	p3_elements = {
+		renderer: renderer,
+		controls: controls,
+		camera: camera
+	}
+
+	return p3_elements
+}
+
+
+function get_ground_plane() {
+	/* Returns a ground plane to be added to the scene */
+
+	var geometry = new THREE.PlaneGeometry( 200000, 200000, 32 );
+	geometry.rotateX( - Math.PI / 2);
+	color = p.colors.background;
+	var material = new THREE.MeshPhongMaterial( { color: color, specular: color, shininess: 0, flatShading: false, transparent: true, opacity: 1} );
+
+	var plane = new THREE.Mesh( geometry, material );
+	plane.receiveShadow = true;
+
+	plane.position.y += 120;
+
+	return plane;
+}
+
+
+
+// MODULE EXPORTS ===================================================================
+
+var p3 = {
+	get_scene: function(){ return get_scene() },
+	get_elements: function() { return get_elements() },
+	get_ground_plane: function() { return get_ground_plane() },
+};
+
+
+module.exports = p3
+
+
+
+},{"./properties.js":5,"three":40,"three-orbitcontrols":39}],7:[function(require,module,exports){
 // https://d3js.org/d3-array/ v1.2.4 Copyright 2018 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -1784,7 +1029,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{}],3:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 // https://d3js.org/d3-axis/ v1.0.12 Copyright 2018 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -1979,7 +1224,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{}],4:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 // https://d3js.org/d3-brush/ v1.1.5 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-dispatch'), require('d3-drag'), require('d3-interpolate'), require('d3-selection'), require('d3-transition')) :
@@ -2598,7 +1843,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-dispatch":9,"d3-drag":10,"d3-interpolate":18,"d3-selection":25,"d3-transition":30}],5:[function(require,module,exports){
+},{"d3-dispatch":14,"d3-drag":15,"d3-interpolate":23,"d3-selection":30,"d3-transition":35}],10:[function(require,module,exports){
 // https://d3js.org/d3-chord/ v1.0.6 Copyright 2018 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-array'), require('d3-path')) :
@@ -2830,7 +2075,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{"d3-array":2,"d3-path":19}],6:[function(require,module,exports){
+},{"d3-array":7,"d3-path":24}],11:[function(require,module,exports){
 // https://d3js.org/d3-collection/ v1.0.7 Copyright 2018 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -3049,7 +2294,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{}],7:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 // https://d3js.org/d3-color/ v1.4.0 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -3632,7 +2877,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],8:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 // https://d3js.org/d3-contour/ v1.3.2 Copyright 2018 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-array')) :
@@ -4065,7 +3310,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{"d3-array":2}],9:[function(require,module,exports){
+},{"d3-array":7}],14:[function(require,module,exports){
 // https://d3js.org/d3-dispatch/ v1.0.6 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -4162,7 +3407,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],10:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 // https://d3js.org/d3-drag/ v1.2.5 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-dispatch'), require('d3-selection')) :
@@ -4398,7 +3643,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-dispatch":9,"d3-selection":25}],11:[function(require,module,exports){
+},{"d3-dispatch":14,"d3-selection":30}],16:[function(require,module,exports){
 // https://d3js.org/d3-dsv/ v1.2.0 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -4633,7 +3878,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],12:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 // https://d3js.org/d3-ease/ v1.0.6 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -4894,7 +4139,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],13:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 // https://d3js.org/d3-fetch/ v1.1.2 Copyright 2018 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-dsv')) :
@@ -4998,7 +4243,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{"d3-dsv":11}],14:[function(require,module,exports){
+},{"d3-dsv":16}],19:[function(require,module,exports){
 // https://d3js.org/d3-force/ v1.2.1 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-quadtree'), require('d3-collection'), require('d3-dispatch'), require('d3-timer')) :
@@ -5668,7 +4913,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{"d3-collection":6,"d3-dispatch":9,"d3-quadtree":21,"d3-timer":29}],15:[function(require,module,exports){
+},{"d3-collection":11,"d3-dispatch":14,"d3-quadtree":26,"d3-timer":34}],20:[function(require,module,exports){
 // https://d3js.org/d3-format/ v1.4.3 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -6008,7 +5253,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],16:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 // https://d3js.org/d3-geo/ v1.11.9 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-array')) :
@@ -9136,7 +8381,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-array":2}],17:[function(require,module,exports){
+},{"d3-array":7}],22:[function(require,module,exports){
 // https://d3js.org/d3-hierarchy/ v1.1.9 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -10428,7 +9673,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],18:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 // https://d3js.org/d3-interpolate/ v1.4.0 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-color')) :
@@ -11023,7 +10268,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-color":7}],19:[function(require,module,exports){
+},{"d3-color":12}],24:[function(require,module,exports){
 // https://d3js.org/d3-path/ v1.0.9 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -11166,7 +10411,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],20:[function(require,module,exports){
+},{}],25:[function(require,module,exports){
 // https://d3js.org/d3-polygon/ v1.0.6 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -11318,7 +10563,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],21:[function(require,module,exports){
+},{}],26:[function(require,module,exports){
 // https://d3js.org/d3-quadtree/ v1.0.7 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -11739,7 +10984,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],22:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 // https://d3js.org/d3-random/ v1.1.2 Copyright 2018 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -11856,7 +11101,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{}],23:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 // https://d3js.org/d3-scale-chromatic/ v1.5.0 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-interpolate'), require('d3-color')) :
@@ -12379,7 +11624,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-color":7,"d3-interpolate":18}],24:[function(require,module,exports){
+},{"d3-color":12,"d3-interpolate":23}],29:[function(require,module,exports){
 // https://d3js.org/d3-scale/ v2.2.2 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-collection'), require('d3-array'), require('d3-interpolate'), require('d3-format'), require('d3-time'), require('d3-time-format')) :
@@ -13546,7 +12791,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{"d3-array":2,"d3-collection":6,"d3-format":15,"d3-interpolate":18,"d3-time":28,"d3-time-format":27}],25:[function(require,module,exports){
+},{"d3-array":7,"d3-collection":11,"d3-format":20,"d3-interpolate":23,"d3-time":33,"d3-time-format":32}],30:[function(require,module,exports){
 // https://d3js.org/d3-selection/ v1.4.1 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -14537,7 +13782,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],26:[function(require,module,exports){
+},{}],31:[function(require,module,exports){
 // https://d3js.org/d3-shape/ v1.3.7 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-path')) :
@@ -16488,7 +15733,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-path":19}],27:[function(require,module,exports){
+},{"d3-path":24}],32:[function(require,module,exports){
 // https://d3js.org/d3-time-format/ v2.2.3 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-time')) :
@@ -17197,7 +16442,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-time":28}],28:[function(require,module,exports){
+},{"d3-time":33}],33:[function(require,module,exports){
 // https://d3js.org/d3-time/ v1.1.0 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -17572,7 +16817,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],29:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 // https://d3js.org/d3-timer/ v1.0.10 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -17723,7 +16968,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],30:[function(require,module,exports){
+},{}],35:[function(require,module,exports){
 // https://d3js.org/d3-transition/ v1.3.2 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-selection'), require('d3-dispatch'), require('d3-timer'), require('d3-interpolate'), require('d3-color'), require('d3-ease')) :
@@ -18605,7 +17850,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-color":7,"d3-dispatch":9,"d3-ease":12,"d3-interpolate":18,"d3-selection":25,"d3-timer":29}],31:[function(require,module,exports){
+},{"d3-color":12,"d3-dispatch":14,"d3-ease":17,"d3-interpolate":23,"d3-selection":30,"d3-timer":34}],36:[function(require,module,exports){
 // https://d3js.org/d3-voronoi/ v1.1.4 Copyright 2018 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -19606,7 +18851,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{}],32:[function(require,module,exports){
+},{}],37:[function(require,module,exports){
 // https://d3js.org/d3-zoom/ v1.8.3 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-dispatch'), require('d3-drag'), require('d3-interpolate'), require('d3-selection'), require('d3-transition')) :
@@ -20105,7 +19350,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-dispatch":9,"d3-drag":10,"d3-interpolate":18,"d3-selection":25,"d3-transition":30}],33:[function(require,module,exports){
+},{"d3-dispatch":14,"d3-drag":15,"d3-interpolate":23,"d3-selection":30,"d3-transition":35}],38:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', { value: true });
@@ -20394,7 +19639,7 @@ Object.keys(d3Zoom).forEach(function (k) {
 });
 exports.version = version;
 
-},{"d3-array":2,"d3-axis":3,"d3-brush":4,"d3-chord":5,"d3-collection":6,"d3-color":7,"d3-contour":8,"d3-dispatch":9,"d3-drag":10,"d3-dsv":11,"d3-ease":12,"d3-fetch":13,"d3-force":14,"d3-format":15,"d3-geo":16,"d3-hierarchy":17,"d3-interpolate":18,"d3-path":19,"d3-polygon":20,"d3-quadtree":21,"d3-random":22,"d3-scale":24,"d3-scale-chromatic":23,"d3-selection":25,"d3-shape":26,"d3-time":28,"d3-time-format":27,"d3-timer":29,"d3-transition":30,"d3-voronoi":31,"d3-zoom":32}],34:[function(require,module,exports){
+},{"d3-array":7,"d3-axis":8,"d3-brush":9,"d3-chord":10,"d3-collection":11,"d3-color":12,"d3-contour":13,"d3-dispatch":14,"d3-drag":15,"d3-dsv":16,"d3-ease":17,"d3-fetch":18,"d3-force":19,"d3-format":20,"d3-geo":21,"d3-hierarchy":22,"d3-interpolate":23,"d3-path":24,"d3-polygon":25,"d3-quadtree":26,"d3-random":27,"d3-scale":29,"d3-scale-chromatic":28,"d3-selection":30,"d3-shape":31,"d3-time":33,"d3-time-format":32,"d3-timer":34,"d3-transition":35,"d3-voronoi":36,"d3-zoom":37}],39:[function(require,module,exports){
 /* three-orbitcontrols addendum */ var THREE = require('three');
 /**
  * @author qiao / https://github.com/qiao
@@ -21578,297 +20823,7 @@ THREE.MapControls.prototype = Object.create( THREE.EventDispatcher.prototype );
 THREE.MapControls.prototype.constructor = THREE.MapControls;
 /* three-orbitcontrols addendum */ module.exports = exports.default = THREE.OrbitControls;
 
-},{"three":36}],35:[function(require,module,exports){
-/**
- * @author aleeper / http://adamleeper.com/
- * @author mrdoob / http://mrdoob.com/
- * @author gero3 / https://github.com/gero3
- * @author Mugen87 / https://github.com/Mugen87
- *
- * Description: A THREE loader for STL ASCII files, as created by Solidworks and other CAD programs.
- *
- * Supports both binary and ASCII encoded files, with automatic detection of type.
- *
- * The loader returns a non-indexed buffer geometry.
- *
- * Limitations:
- *  Binary decoding supports "Magics" color format (http://en.wikipedia.org/wiki/STL_(file_format)#Color_in_binary_STL).
- *  There is perhaps some question as to how valid it is to always assume little-endian-ness.
- *  ASCII decoding assumes file is UTF-8.
- *
- * Usage:
- *  var loader = new THREE.STLLoader();
- *  loader.load( './models/stl/slotted_disk.stl', function ( geometry ) {
- *    scene.add( new THREE.Mesh( geometry ) );
- *  });
- *
- * For binary STLs geometry might contain colors for vertices. To use it:
- *  // use the same code to load STL as above
- *  if (geometry.hasColors) {
- *    material = new THREE.MeshPhongMaterial({ opacity: geometry.alpha, vertexColors: THREE.VertexColors });
- *  } else { .... }
- *  var mesh = new THREE.Mesh( geometry, material );
- */
-
- module.exports = function (THREE) {
-
-   var STLLoader = function ( manager ) {
-
-   	this.manager = ( manager !== undefined ) ? manager : THREE.DefaultLoadingManager;
-
-   };
-
-   STLLoader.prototype = {
-
-   	constructor: THREE.STLLoader,
-
-   	load: function ( url, onLoad, onProgress, onError ) {
-
-   		var scope = this;
-
-   		var loader = new THREE.FileLoader( scope.manager );
-   		loader.setResponseType( 'arraybuffer' );
-   		loader.load( url, function ( text ) {
-
-   			onLoad( scope.parse( text ) );
-
-   		}, onProgress, onError );
-
-   	},
-
-   	parse: function ( data ) {
-
-   		var isBinary = function () {
-
-   			var expect, face_size, n_faces, reader;
-   			reader = new DataView( binData );
-   			face_size = ( 32 / 8 * 3 ) + ( ( 32 / 8 * 3 ) * 3 ) + ( 16 / 8 );
-   			n_faces = reader.getUint32( 80, true );
-   			expect = 80 + ( 32 / 8 ) + ( n_faces * face_size );
-
-   			if ( expect === reader.byteLength ) {
-
-   				return true;
-
-   			}
-
-   			// An ASCII STL data must begin with 'solid ' as the first six bytes.
-   			// However, ASCII STLs lacking the SPACE after the 'd' are known to be
-   			// plentiful.  So, check the first 5 bytes for 'solid'.
-
-   			// US-ASCII ordinal values for 's', 'o', 'l', 'i', 'd'
-   			var solid = [ 115, 111, 108, 105, 100 ];
-
-   			for ( var i = 0; i < 5; i ++ ) {
-
-   				// If solid[ i ] does not match the i-th byte, then it is not an
-   				// ASCII STL; hence, it is binary and return true.
-
-   				if ( solid[ i ] != reader.getUint8( i, false ) ) return true;
-
-    			}
-
-   			// First 5 bytes read "solid"; declare it to be an ASCII STL
-   			return false;
-
-   		};
-
-   		var binData = this.ensureBinary( data );
-
-   		return isBinary() ? this.parseBinary( binData ) : this.parseASCII( this.ensureString( data ) );
-
-   	},
-
-   	parseBinary: function ( data ) {
-
-   		var reader = new DataView( data );
-   		var faces = reader.getUint32( 80, true );
-
-   		var r, g, b, hasColors = false, colors;
-   		var defaultR, defaultG, defaultB, alpha;
-
-   		// process STL header
-   		// check for default color in header ("COLOR=rgba" sequence).
-
-   		for ( var index = 0; index < 80 - 10; index ++ ) {
-
-   			if ( ( reader.getUint32( index, false ) == 0x434F4C4F /*COLO*/ ) &&
-   				( reader.getUint8( index + 4 ) == 0x52 /*'R'*/ ) &&
-   				( reader.getUint8( index + 5 ) == 0x3D /*'='*/ ) ) {
-
-   				hasColors = true;
-   				colors = [];
-
-   				defaultR = reader.getUint8( index + 6 ) / 255;
-   				defaultG = reader.getUint8( index + 7 ) / 255;
-   				defaultB = reader.getUint8( index + 8 ) / 255;
-   				alpha = reader.getUint8( index + 9 ) / 255;
-
-   			}
-
-   		}
-
-   		var dataOffset = 84;
-   		var faceLength = 12 * 4 + 2;
-
-   		var geometry = new THREE.BufferGeometry();
-
-   		var vertices = [];
-   		var normals = [];
-
-   		for ( var face = 0; face < faces; face ++ ) {
-
-   			var start = dataOffset + face * faceLength;
-   			var normalX = reader.getFloat32( start, true );
-   			var normalY = reader.getFloat32( start + 4, true );
-   			var normalZ = reader.getFloat32( start + 8, true );
-
-   			if ( hasColors ) {
-
-   				var packedColor = reader.getUint16( start + 48, true );
-
-   				if ( ( packedColor & 0x8000 ) === 0 ) {
-
-   					// facet has its own unique color
-
-   					r = ( packedColor & 0x1F ) / 31;
-   					g = ( ( packedColor >> 5 ) & 0x1F ) / 31;
-   					b = ( ( packedColor >> 10 ) & 0x1F ) / 31;
-
-   				} else {
-
-   					r = defaultR;
-   					g = defaultG;
-   					b = defaultB;
-
-   				}
-
-   			}
-
-   			for ( var i = 1; i <= 3; i ++ ) {
-
-   				var vertexstart = start + i * 12;
-
-   				vertices.push( reader.getFloat32( vertexstart, true ) );
-   				vertices.push( reader.getFloat32( vertexstart + 4, true ) );
-   				vertices.push( reader.getFloat32( vertexstart + 8, true ) );
-
-   				normals.push( normalX, normalY, normalZ );
-
-   				if ( hasColors ) {
-
-   					colors.push( r, g, b );
-
-   				}
-
-   			}
-
-   		}
-
-   		geometry.addAttribute( 'position', new THREE.BufferAttribute( new Float32Array( vertices ), 3 ) );
-   		geometry.addAttribute( 'normal', new THREE.BufferAttribute( new Float32Array( normals ), 3 ) );
-
-   		if ( hasColors ) {
-
-   			geometry.addAttribute( 'color', new THREE.BufferAttribute( new Float32Array( colors ), 3 ) );
-   			geometry.hasColors = true;
-   			geometry.alpha = alpha;
-
-   		}
-
-   		return geometry;
-
-   	},
-
-   	parseASCII: function ( data ) {
-
-   		var geometry, length, patternFace, patternNormal, patternVertex, result, text;
-   		geometry = new THREE.BufferGeometry();
-   		patternFace = /facet([\s\S]*?)endfacet/g;
-
-   		var vertices = [];
-   		var normals = [];
-
-   		var normal = new THREE.Vector3();
-
-   		while ( ( result = patternFace.exec( data ) ) !== null ) {
-
-   			text = result[ 0 ];
-   			patternNormal = /normal[\s]+([\-+]?[0-9]+\.?[0-9]*([eE][\-+]?[0-9]+)?)+[\s]+([\-+]?[0-9]*\.?[0-9]+([eE][\-+]?[0-9]+)?)+[\s]+([\-+]?[0-9]*\.?[0-9]+([eE][\-+]?[0-9]+)?)+/g;
-
-   			while ( ( result = patternNormal.exec( text ) ) !== null ) {
-
-   				normal.x = parseFloat( result[ 1 ] );
-   				normal.y = parseFloat( result[ 3 ] );
-   				normal.z = parseFloat( result[ 5 ] );
-
-   			}
-
-   			patternVertex = /vertex[\s]+([\-+]?[0-9]+\.?[0-9]*([eE][\-+]?[0-9]+)?)+[\s]+([\-+]?[0-9]*\.?[0-9]+([eE][\-+]?[0-9]+)?)+[\s]+([\-+]?[0-9]*\.?[0-9]+([eE][\-+]?[0-9]+)?)+/g;
-
-   			while ( ( result = patternVertex.exec( text ) ) !== null ) {
-
-   				vertices.push( parseFloat( result[ 1 ] ), parseFloat( result[ 3 ] ), parseFloat( result[ 5 ] ) );
-   				normals.push( normal.x, normal.y, normal.z );
-
-   			}
-
-   		}
-
-   		geometry.addAttribute( 'position', new THREE.BufferAttribute( new Float32Array( vertices ), 3 ) );
-   		geometry.addAttribute( 'normal', new THREE.BufferAttribute( new Float32Array( normals ), 3 ) );
-
-   		return geometry;
-
-   	},
-
-   	ensureString: function ( buf ) {
-
-   		if ( typeof buf !== "string" ) {
-
-   			var array_buffer = new Uint8Array( buf );
-   			var strArray = [];
-   			for ( var i = 0; i < buf.byteLength; i ++ ) {
-
-   				strArray.push(String.fromCharCode( array_buffer[ i ] )); // implicitly assumes little-endian
-
-   			}
-   			return strArray.join('');
-
-   		} else {
-
-   			return buf;
-
-   		}
-
-   	},
-
-   	ensureBinary: function ( buf ) {
-
-   		if ( typeof buf === "string" ) {
-
-   			var array_buffer = new Uint8Array( buf.length );
-   			for ( var i = 0; i < buf.length; i ++ ) {
-
-   				array_buffer[ i ] = buf.charCodeAt( i ) & 0xff; // implicitly assumes little-endian
-
-   			}
-   			return array_buffer.buffer || array_buffer;
-
-   		} else {
-
-   			return buf;
-
-   		}
-
-   	}
-
-   }
-
-   return STLLoader
- }
-
-},{}],36:[function(require,module,exports){
+},{"three":40}],40:[function(require,module,exports){
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
 	typeof define === 'function' && define.amd ? define(['exports'], factory) :
@@ -72394,4 +71349,4 @@ THREE.MapControls.prototype.constructor = THREE.MapControls;
 
 })));
 
-},{}]},{},[1]);
+},{}]},{},[2]);

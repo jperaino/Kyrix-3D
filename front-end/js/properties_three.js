@@ -1,0 +1,123 @@
+const THREE = require('three');
+const OrbitControls = require('three-orbitcontrols');
+const p = require('./properties.js')
+
+
+
+// PROPERTY METHODS ===================================================================
+
+function get_scene () {
+	/* Returns a three.js scene object, including lights */
+
+	// Init Scene
+	scene = new THREE.Scene();
+	scene.background = p.colors.background;
+
+	// Add Fog
+	scene.fog = new THREE.Fog(p.colors.background, 5000, 50000);
+
+	// Add Lights
+	var light = new THREE.DirectionalLight( p.colors.light );
+		light.position.set( 100, 100, 100 );
+		light.intensity = 0.1
+		scene.add( light );
+
+	var light = new THREE.DirectionalLight( p.colors.light );
+		light.position.set( 23584, 6652, 4096 );
+		light.intensity = 0.1
+		scene.add( light );
+
+	var light = new THREE.AmbientLight( p.colors.light );
+		light.intensity = 0.3;
+		scene.add( light );
+
+	var dirLight = new THREE.DirectionalLight( p.colors.light, 1 );
+		dirLight.name = 'Dir. Light';
+		dirLight.position.set(8356, 8807, 20395);
+		dirLight.target.position.set(16487, 0, 14371);
+		dirLight.castShadow = true;
+		dirLight.shadow.camera.near = 0.1;
+		dirLight.shadow.camera.far = 50000;
+		dirLight.shadow.camera.right = 20000;
+		dirLight.shadow.camera.left = - 10000;
+		dirLight.shadow.camera.top	= 20000;
+		dirLight.shadow.camera.bottom = - 30000;
+		dirLight.shadow.mapSize.width = 512*4;
+		dirLight.shadow.mapSize.height = 512*4;
+		dirLight.shadow.radius = 2;
+		dirLight.shadow.bias = -0.0001;
+		dirLight.intensity = 0.75;
+		scene.add( dirLight );
+		scene.add( dirLight.target );
+
+	return scene;
+}
+
+
+
+function get_elements () {
+	/* Returns an object containing the three.js renderer, controls, and camera */
+
+	// Renderer
+	var renderer = new THREE.WebGLRenderer( { antialias: true } );
+	renderer.setPixelRatio( window.devicePixelRatio );
+	renderer.setSize( window.innerWidth, window.innerHeight );
+	renderer.shadowMap.enabled = true;
+	renderer.shadowMap.type = THREE.VSMShadowMap;
+	renderer.setClearColor( 0xCCCCCC, 1 );
+
+	// Camera
+	var camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 50000 );
+	camera.position.set( 10706, 5203, 15119 );
+
+	// Controls
+	var controls = new OrbitControls( camera, renderer.domElement );
+	controls.enableDamping = true; 
+	controls.dampingFactor = 0.05;
+	controls.screenSpacePanning = false;
+	controls.minDistance = 100;
+	controls.maxDistance = 40000;
+	controls.maxPolarAngle = Math.PI / 2;
+	controls.easing = true;
+	controls.target.set(18022,0,12510)
+
+	p3_elements = {
+		renderer: renderer,
+		controls: controls,
+		camera: camera
+	}
+
+	return p3_elements
+}
+
+
+function get_ground_plane() {
+	/* Returns a ground plane to be added to the scene */
+
+	var geometry = new THREE.PlaneGeometry( 200000, 200000, 32 );
+	geometry.rotateX( - Math.PI / 2);
+	color = p.colors.background;
+	var material = new THREE.MeshPhongMaterial( { color: color, specular: color, shininess: 0, flatShading: false, transparent: true, opacity: 1} );
+
+	var plane = new THREE.Mesh( geometry, material );
+	plane.receiveShadow = true;
+
+	plane.position.y += 120;
+
+	return plane;
+}
+
+
+
+// MODULE EXPORTS ===================================================================
+
+var p3 = {
+	get_scene: function(){ return get_scene() },
+	get_elements: function() { return get_elements() },
+	get_ground_plane: function() { return get_ground_plane() },
+};
+
+
+module.exports = p3
+
+
