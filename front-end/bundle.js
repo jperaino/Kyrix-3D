@@ -15,8 +15,6 @@ function get_geom(x) {
 }
 
 
-
-
 // MODULE EXPORTS ===================================================================
 
 var d = {
@@ -30,26 +28,24 @@ const d3 = require('d3');
 
 const d = require('./data_helpers.js')
 const p = require('./properties.js')
-const p3 = require('./properties_three.js')
-const m3 = require('./methods_three.js')
+const h3 = require('./three_helpers.js')
 const modes = require('./modes.js')
 
 
 // PROPERTIES ===================================================================
 
-var mode = 'buildings'
+var mode = 'buildings';
 
-var uuids = {
-	ground_plane: undefined,
-	// geoms: []
-};
-
-// var geoms = {
-// 	rooms: {},
-// 	levels: {}
-// }
-
+var ground_plane_uuid = undefined;
 var scene_geoms = {};
+var clickable_uuids = [];
+
+// UI ===================================================================
+
+$("#infectedRooms").click(function() {set_mode('rooms')} );
+$("#viewPlan").click(viewPlan);
+$("#viewBuildings").click(function() {set_mode('buildings')} );
+$("#viewPeople").click(function() {set_mode('people')} );
 
 // AJAX ===================================================================
 
@@ -60,11 +56,11 @@ function load_geoms(kind, condition='') {
 	var predicate = `id=mgh&predicate0=(kind='${kind}')`;
 
 	if (condition !== '') {
-		console.log("here")
 		predicate = `id=mgh&predicate0=((kind='${kind}')and(${condition}))`
+		console.log(predicate)
 	}
 
-
+	// Call backend
 	$.ajax({
         type: "GET",
         url: "/canvas",
@@ -75,13 +71,23 @@ function load_geoms(kind, condition='') {
         	for (var i = 0; i < x.length; i++) {
 
         		geom = d.get_geom(x[i]);
-        		mesh = m3.mesh_from_geom(geom);
+        		mesh = h3.mesh_from_geom(geom);
+
+        		if (kind === 'Room') {
+        			depth = 120;
+        			mesh.material.transparent = false;
+        			// mesh.receiveShadow = false;
+        		}
+
         		geom.uuid = mesh.uuid;
         		scene_geoms[geom.uuid] = geom;
         		scene.add(mesh);
         		tweenOpacity(geom, 1, 500);
 
         	}
+
+        	// Continue the mode change routine
+        	set_mode_pt_2(mode);
         }
 	})
 }
@@ -95,21 +101,21 @@ function init_three_js(){
 	/* Loads the three.js scene, elements, and adds it to the DOM */
 
 	// Get scene
-	scene = p3.get_scene();
+	scene = h3.get_scene();
 
 	// Get renderer, camera, and controls
-	var p3_elements = p3.get_elements();
-	controls = p3_elements.controls
-	renderer = p3_elements.renderer
-	camera = p3_elements.camera
+	var h3_elements = h3.get_elements();
+	controls = h3_elements.controls
+	renderer = h3_elements.renderer
+	camera = h3_elements.camera
 
 	// Add Renderer to scene
 	document.body.appendChild( renderer.domElement );
 
 	// Add ground plane to scene
-	var ground_plane = p3.get_ground_plane();
+	var ground_plane = h3.get_ground_plane();
 	scene.add(ground_plane);
-	uuids.ground_plane = ground_plane.uuid;
+	ground_plane_uuid = ground_plane.uuid;
 }
 
 
@@ -163,22 +169,60 @@ function tweenOpacity(geom, new_opacity, duration) {
 // UPDATE MODE ===================================================================
 
 function set_clickable_objects(m) {
+	/* Given a mode, populats the list of uuids of objects that the mouse can interact with */
 
-	clickable_objects = m.clickable;
+	// Reset the list of interactive objects
+	clickable_uuids = [];
 
-	$.each()
+	// Iterate through each object in the scene and add to the clickable list, if specified
+	$.each(scene_geoms, (k,v) => {
+		if ( v.kind === m.clickable_kind) {
+			clickable_uuids.push(k)
+		}
+	})
+}
 
+function toggle_ground_plane(m) {
+	/* Turns the ground plane on or off per mode's specs */
+
+	const ground_plane = scene.getObjectByProperty('uuid', ground_plane_uuid);
+
+	if(m.ground_plane_on) {
+		tweenOpacity(ground_plane, 1, 400);
+	} else {
+		tweenOpacity(ground_plane, 0, 400);
+	}
+}
+
+function update_level_opacity(m) {
+	/* Given a mode's specifications, update level objects' opacity */
+
+	$.each(scene_geoms, (k,v) => {
+		if (v.kind === 'Level') {
+			tweenOpacity(v, m.level_opacity, 400)
+		}
+	})
+}
+
+function set_mode(mode){
+	/* Perform actions to change the mode before new objects are fetched from the backend */
+	console.log(`Updating mode to: ${mode}`)
+
+	m = modes[mode];
+	toggle_ground_plane(m);
+	update_level_opacity(m);
+
+	if (m.room_condition !== null) {
+		load_geoms('Room', condition=m.room_condition)
+	}
 }
 
 
-function update_mode_to(mode){
+function set_mode_pt_2(mode){
+	/* Perform actions to change the mode after new objects are fetched from the backend */
 
-	// Fetch mode properties
 	m = modes[mode];
-
-	console.log(m);
-
-
+	set_clickable_objects(m);
 
 }
 
@@ -189,11 +233,11 @@ function init() {
 
 	init_three_js();
 	load_geoms('Level');
-	load_geoms('Room', "level='8'")
 
 	window.addEventListener( 'resize', on_window_resize, false );
 
-	update_mode_to('buildings');
+	set_mode(mode);
+	
 
 }
 
@@ -202,20 +246,66 @@ function init() {
 init();
 animate();
 
+},{"./data_helpers.js":1,"./modes.js":3,"./properties.js":4,"./three_helpers.js":5,"d3":37}],3:[function(require,module,exports){
+
+modes = {}
+
+
+modes['buildings'] = {
+
+	predicate: `id=mgh&predicate0=(kind='Level')`,
+	clickable_kind: 'Level',
+	ground_plane_on: true,
+	visible_divs: [],
+	color_scale: null,
+	room_filter: null, 
+	level_opacity: 1,
+	current_levels: [],
+	room_condition: null
+
+}
+
+
+modes['rooms'] = {
+
+	clickable_kind: 'Room',
+	ground_plane_on: false,
+	visible_divs: [],
+	color_scale: null,
+	room_filter: null, 
+	level_opacity: 0.075,
+	current_levels: [],
+	room_condition: "level='8'"
+
+}
 
 
 
 
 
+module.exports = modes
+},{}],4:[function(require,module,exports){
 
-},{"./data_helpers.js":1,"./methods_three.js":3,"./modes.js":4,"./properties.js":5,"./properties_three.js":6,"d3":38}],3:[function(require,module,exports){
+var colors = {
+	'background': 0xffffff,
+	'selected_hex': 0x0000FF,
+	'unselected_hex': 0x000000,
+	'light': 0xffffff,
+};
+
+
+// MODULE EXPORTS ===================================================================
+
+var p = {
+	colors: colors
+};
+
+
+module.exports = p
+},{}],5:[function(require,module,exports){
 const THREE = require('three');
+const OrbitControls = require('three-orbitcontrols');
 const p = require('./properties.js')
-
-
-
-// PROPERTIES ===================================================================
-
 
 
 // METHODS ===================================================================
@@ -255,68 +345,6 @@ function mesh_from_geom(geom) {
 	return mesh;
 
 }
-
-
-
-// MODULE EXPORTS ===================================================================
-
-var m3 = {
-	mesh_from_geom: function(geom){ return mesh_from_geom(geom) },
-	// get_elements: function() { return get_elements() },
-	// get_ground_plane: function() { return get_ground_plane() }
-};
-
-
-module.exports = m3
-},{"./properties.js":5,"three":40}],4:[function(require,module,exports){
-
-modes = {}
-
-
-modes['buildings'] = {
-
-	clickable: 'level',
-	ground_plane_on: true,
-	visible_divs: [],
-	color_scale: null,
-	room_filter: null, 
-	level_opacity: 1,
-	current_levels: [],
-
-}
-
-
-modes['level']
-
-
-
-
-
-module.exports = modes
-},{}],5:[function(require,module,exports){
-
-var colors = {
-	'background': 0xffffff,
-	'selected_hex': 0x0000FF,
-	'unselected_hex': 0x000000,
-	'light': 0xffffff,
-};
-
-
-
-// MODULE EXPORTS ===================================================================
-
-var p = {
-	colors: colors
-};
-
-
-module.exports = p
-},{}],6:[function(require,module,exports){
-const THREE = require('three');
-const OrbitControls = require('three-orbitcontrols');
-const p = require('./properties.js')
-
 
 
 // PROPERTY METHODS ===================================================================
@@ -430,6 +458,7 @@ var p3 = {
 	get_scene: function(){ return get_scene() },
 	get_elements: function() { return get_elements() },
 	get_ground_plane: function() { return get_ground_plane() },
+	mesh_from_geom: function(geom) { return mesh_from_geom(geom) }
 };
 
 
@@ -437,7 +466,7 @@ module.exports = p3
 
 
 
-},{"./properties.js":5,"three":40,"three-orbitcontrols":39}],7:[function(require,module,exports){
+},{"./properties.js":4,"three":39,"three-orbitcontrols":38}],6:[function(require,module,exports){
 // https://d3js.org/d3-array/ v1.2.4 Copyright 2018 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -1029,7 +1058,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{}],8:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
 // https://d3js.org/d3-axis/ v1.0.12 Copyright 2018 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -1224,7 +1253,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{}],9:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 // https://d3js.org/d3-brush/ v1.1.5 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-dispatch'), require('d3-drag'), require('d3-interpolate'), require('d3-selection'), require('d3-transition')) :
@@ -1843,7 +1872,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-dispatch":14,"d3-drag":15,"d3-interpolate":23,"d3-selection":30,"d3-transition":35}],10:[function(require,module,exports){
+},{"d3-dispatch":13,"d3-drag":14,"d3-interpolate":22,"d3-selection":29,"d3-transition":34}],9:[function(require,module,exports){
 // https://d3js.org/d3-chord/ v1.0.6 Copyright 2018 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-array'), require('d3-path')) :
@@ -2075,7 +2104,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{"d3-array":7,"d3-path":24}],11:[function(require,module,exports){
+},{"d3-array":6,"d3-path":23}],10:[function(require,module,exports){
 // https://d3js.org/d3-collection/ v1.0.7 Copyright 2018 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -2294,7 +2323,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{}],12:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 // https://d3js.org/d3-color/ v1.4.0 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -2877,7 +2906,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],13:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 // https://d3js.org/d3-contour/ v1.3.2 Copyright 2018 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-array')) :
@@ -3310,7 +3339,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{"d3-array":7}],14:[function(require,module,exports){
+},{"d3-array":6}],13:[function(require,module,exports){
 // https://d3js.org/d3-dispatch/ v1.0.6 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -3407,7 +3436,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],15:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 // https://d3js.org/d3-drag/ v1.2.5 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-dispatch'), require('d3-selection')) :
@@ -3643,7 +3672,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-dispatch":14,"d3-selection":30}],16:[function(require,module,exports){
+},{"d3-dispatch":13,"d3-selection":29}],15:[function(require,module,exports){
 // https://d3js.org/d3-dsv/ v1.2.0 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -3878,7 +3907,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],17:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 // https://d3js.org/d3-ease/ v1.0.6 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -4139,7 +4168,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],18:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 // https://d3js.org/d3-fetch/ v1.1.2 Copyright 2018 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-dsv')) :
@@ -4243,7 +4272,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{"d3-dsv":16}],19:[function(require,module,exports){
+},{"d3-dsv":15}],18:[function(require,module,exports){
 // https://d3js.org/d3-force/ v1.2.1 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-quadtree'), require('d3-collection'), require('d3-dispatch'), require('d3-timer')) :
@@ -4913,7 +4942,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{"d3-collection":11,"d3-dispatch":14,"d3-quadtree":26,"d3-timer":34}],20:[function(require,module,exports){
+},{"d3-collection":10,"d3-dispatch":13,"d3-quadtree":25,"d3-timer":33}],19:[function(require,module,exports){
 // https://d3js.org/d3-format/ v1.4.3 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -5253,7 +5282,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],21:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 // https://d3js.org/d3-geo/ v1.11.9 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-array')) :
@@ -8381,7 +8410,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-array":7}],22:[function(require,module,exports){
+},{"d3-array":6}],21:[function(require,module,exports){
 // https://d3js.org/d3-hierarchy/ v1.1.9 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -9673,7 +9702,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],23:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 // https://d3js.org/d3-interpolate/ v1.4.0 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-color')) :
@@ -10268,7 +10297,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-color":12}],24:[function(require,module,exports){
+},{"d3-color":11}],23:[function(require,module,exports){
 // https://d3js.org/d3-path/ v1.0.9 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -10411,7 +10440,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],25:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 // https://d3js.org/d3-polygon/ v1.0.6 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -10563,7 +10592,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],26:[function(require,module,exports){
+},{}],25:[function(require,module,exports){
 // https://d3js.org/d3-quadtree/ v1.0.7 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -10984,7 +11013,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],27:[function(require,module,exports){
+},{}],26:[function(require,module,exports){
 // https://d3js.org/d3-random/ v1.1.2 Copyright 2018 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -11101,7 +11130,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{}],28:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 // https://d3js.org/d3-scale-chromatic/ v1.5.0 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-interpolate'), require('d3-color')) :
@@ -11624,7 +11653,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-color":12,"d3-interpolate":23}],29:[function(require,module,exports){
+},{"d3-color":11,"d3-interpolate":22}],28:[function(require,module,exports){
 // https://d3js.org/d3-scale/ v2.2.2 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-collection'), require('d3-array'), require('d3-interpolate'), require('d3-format'), require('d3-time'), require('d3-time-format')) :
@@ -12791,7 +12820,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{"d3-array":7,"d3-collection":11,"d3-format":20,"d3-interpolate":23,"d3-time":33,"d3-time-format":32}],30:[function(require,module,exports){
+},{"d3-array":6,"d3-collection":10,"d3-format":19,"d3-interpolate":22,"d3-time":32,"d3-time-format":31}],29:[function(require,module,exports){
 // https://d3js.org/d3-selection/ v1.4.1 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -13782,7 +13811,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],31:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 // https://d3js.org/d3-shape/ v1.3.7 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-path')) :
@@ -15733,7 +15762,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-path":24}],32:[function(require,module,exports){
+},{"d3-path":23}],31:[function(require,module,exports){
 // https://d3js.org/d3-time-format/ v2.2.3 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-time')) :
@@ -16442,7 +16471,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-time":33}],33:[function(require,module,exports){
+},{"d3-time":32}],32:[function(require,module,exports){
 // https://d3js.org/d3-time/ v1.1.0 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -16817,7 +16846,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],34:[function(require,module,exports){
+},{}],33:[function(require,module,exports){
 // https://d3js.org/d3-timer/ v1.0.10 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -16968,7 +16997,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],35:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 // https://d3js.org/d3-transition/ v1.3.2 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-selection'), require('d3-dispatch'), require('d3-timer'), require('d3-interpolate'), require('d3-color'), require('d3-ease')) :
@@ -17850,7 +17879,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-color":12,"d3-dispatch":14,"d3-ease":17,"d3-interpolate":23,"d3-selection":30,"d3-timer":34}],36:[function(require,module,exports){
+},{"d3-color":11,"d3-dispatch":13,"d3-ease":16,"d3-interpolate":22,"d3-selection":29,"d3-timer":33}],35:[function(require,module,exports){
 // https://d3js.org/d3-voronoi/ v1.1.4 Copyright 2018 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -18851,7 +18880,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{}],37:[function(require,module,exports){
+},{}],36:[function(require,module,exports){
 // https://d3js.org/d3-zoom/ v1.8.3 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-dispatch'), require('d3-drag'), require('d3-interpolate'), require('d3-selection'), require('d3-transition')) :
@@ -19350,7 +19379,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-dispatch":14,"d3-drag":15,"d3-interpolate":23,"d3-selection":30,"d3-transition":35}],38:[function(require,module,exports){
+},{"d3-dispatch":13,"d3-drag":14,"d3-interpolate":22,"d3-selection":29,"d3-transition":34}],37:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', { value: true });
@@ -19639,7 +19668,7 @@ Object.keys(d3Zoom).forEach(function (k) {
 });
 exports.version = version;
 
-},{"d3-array":7,"d3-axis":8,"d3-brush":9,"d3-chord":10,"d3-collection":11,"d3-color":12,"d3-contour":13,"d3-dispatch":14,"d3-drag":15,"d3-dsv":16,"d3-ease":17,"d3-fetch":18,"d3-force":19,"d3-format":20,"d3-geo":21,"d3-hierarchy":22,"d3-interpolate":23,"d3-path":24,"d3-polygon":25,"d3-quadtree":26,"d3-random":27,"d3-scale":29,"d3-scale-chromatic":28,"d3-selection":30,"d3-shape":31,"d3-time":33,"d3-time-format":32,"d3-timer":34,"d3-transition":35,"d3-voronoi":36,"d3-zoom":37}],39:[function(require,module,exports){
+},{"d3-array":6,"d3-axis":7,"d3-brush":8,"d3-chord":9,"d3-collection":10,"d3-color":11,"d3-contour":12,"d3-dispatch":13,"d3-drag":14,"d3-dsv":15,"d3-ease":16,"d3-fetch":17,"d3-force":18,"d3-format":19,"d3-geo":20,"d3-hierarchy":21,"d3-interpolate":22,"d3-path":23,"d3-polygon":24,"d3-quadtree":25,"d3-random":26,"d3-scale":28,"d3-scale-chromatic":27,"d3-selection":29,"d3-shape":30,"d3-time":32,"d3-time-format":31,"d3-timer":33,"d3-transition":34,"d3-voronoi":35,"d3-zoom":36}],38:[function(require,module,exports){
 /* three-orbitcontrols addendum */ var THREE = require('three');
 /**
  * @author qiao / https://github.com/qiao
@@ -20823,7 +20852,7 @@ THREE.MapControls.prototype = Object.create( THREE.EventDispatcher.prototype );
 THREE.MapControls.prototype.constructor = THREE.MapControls;
 /* three-orbitcontrols addendum */ module.exports = exports.default = THREE.OrbitControls;
 
-},{"three":40}],40:[function(require,module,exports){
+},{"three":39}],39:[function(require,module,exports){
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
 	typeof define === 'function' && define.amd ? define(['exports'], factory) :

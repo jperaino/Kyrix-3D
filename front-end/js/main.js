@@ -2,21 +2,24 @@ const d3 = require('d3');
 
 const d = require('./data_helpers.js')
 const p = require('./properties.js')
-const p3 = require('./properties_three.js')
-const m3 = require('./methods_three.js')
+const h3 = require('./three_helpers.js')
 const modes = require('./modes.js')
 
 
 // PROPERTIES ===================================================================
 
-var mode = 'buildings'
+var mode = 'buildings';
 
-var uuids = {
-	ground_plane: undefined,
-	// geoms: []
-};
-
+var ground_plane_uuid = undefined;
 var scene_geoms = {};
+var clickable_uuids = [];
+
+// UI ===================================================================
+
+$("#infectedRooms").click(function() {set_mode('rooms')} );
+$("#viewPlan").click(viewPlan);
+$("#viewBuildings").click(function() {set_mode('buildings')} );
+$("#viewPeople").click(function() {set_mode('people')} );
 
 // AJAX ===================================================================
 
@@ -27,11 +30,11 @@ function load_geoms(kind, condition='') {
 	var predicate = `id=mgh&predicate0=(kind='${kind}')`;
 
 	if (condition !== '') {
-		console.log("here")
 		predicate = `id=mgh&predicate0=((kind='${kind}')and(${condition}))`
+		console.log(predicate)
 	}
 
-
+	// Call backend
 	$.ajax({
         type: "GET",
         url: "/canvas",
@@ -42,13 +45,23 @@ function load_geoms(kind, condition='') {
         	for (var i = 0; i < x.length; i++) {
 
         		geom = d.get_geom(x[i]);
-        		mesh = m3.mesh_from_geom(geom);
+        		mesh = h3.mesh_from_geom(geom);
+
+        		if (kind === 'Room') {
+        			depth = 120;
+        			mesh.material.transparent = false;
+        			// mesh.receiveShadow = false;
+        		}
+
         		geom.uuid = mesh.uuid;
         		scene_geoms[geom.uuid] = geom;
         		scene.add(mesh);
         		tweenOpacity(geom, 1, 500);
 
         	}
+
+        	// Continue the mode change routine
+        	set_mode_pt_2(mode);
         }
 	})
 }
@@ -62,21 +75,21 @@ function init_three_js(){
 	/* Loads the three.js scene, elements, and adds it to the DOM */
 
 	// Get scene
-	scene = p3.get_scene();
+	scene = h3.get_scene();
 
 	// Get renderer, camera, and controls
-	var p3_elements = p3.get_elements();
-	controls = p3_elements.controls
-	renderer = p3_elements.renderer
-	camera = p3_elements.camera
+	var h3_elements = h3.get_elements();
+	controls = h3_elements.controls
+	renderer = h3_elements.renderer
+	camera = h3_elements.camera
 
 	// Add Renderer to scene
 	document.body.appendChild( renderer.domElement );
 
 	// Add ground plane to scene
-	var ground_plane = p3.get_ground_plane();
+	var ground_plane = h3.get_ground_plane();
 	scene.add(ground_plane);
-	uuids.ground_plane = ground_plane.uuid;
+	ground_plane_uuid = ground_plane.uuid;
 }
 
 
@@ -130,22 +143,60 @@ function tweenOpacity(geom, new_opacity, duration) {
 // UPDATE MODE ===================================================================
 
 function set_clickable_objects(m) {
+	/* Given a mode, populats the list of uuids of objects that the mouse can interact with */
 
-	clickable_objects = m.clickable;
+	// Reset the list of interactive objects
+	clickable_uuids = [];
 
-	$.each()
+	// Iterate through each object in the scene and add to the clickable list, if specified
+	$.each(scene_geoms, (k,v) => {
+		if ( v.kind === m.clickable_kind) {
+			clickable_uuids.push(k)
+		}
+	})
+}
 
+function toggle_ground_plane(m) {
+	/* Turns the ground plane on or off per mode's specs */
+
+	const ground_plane = scene.getObjectByProperty('uuid', ground_plane_uuid);
+
+	if(m.ground_plane_on) {
+		tweenOpacity(ground_plane, 1, 400);
+	} else {
+		tweenOpacity(ground_plane, 0, 400);
+	}
+}
+
+function update_level_opacity(m) {
+	/* Given a mode's specifications, update level objects' opacity */
+
+	$.each(scene_geoms, (k,v) => {
+		if (v.kind === 'Level') {
+			tweenOpacity(v, m.level_opacity, 400)
+		}
+	})
+}
+
+function set_mode(mode){
+	/* Perform actions to change the mode before new objects are fetched from the backend */
+	console.log(`Updating mode to: ${mode}`)
+
+	m = modes[mode];
+	toggle_ground_plane(m);
+	update_level_opacity(m);
+
+	if (m.room_condition !== null) {
+		load_geoms('Room', condition=m.room_condition)
+	}
 }
 
 
-function update_mode_to(mode){
+function set_mode_pt_2(mode){
+	/* Perform actions to change the mode after new objects are fetched from the backend */
 
-	// Fetch mode properties
 	m = modes[mode];
-
-	console.log(m);
-
-
+	set_clickable_objects(m);
 
 }
 
@@ -156,11 +207,11 @@ function init() {
 
 	init_three_js();
 	load_geoms('Level');
-	load_geoms('Room', "level='8'")
 
 	window.addEventListener( 'resize', on_window_resize, false );
 
-	update_mode_to('buildings');
+	set_mode(mode);
+	
 
 }
 
@@ -168,9 +219,3 @@ function init() {
 
 init();
 animate();
-
-
-
-
-
-
