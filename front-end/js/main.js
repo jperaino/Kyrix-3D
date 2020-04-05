@@ -1,4 +1,5 @@
 const d3 = require('d3');
+const THREE = require('three');
 
 const d = require('./data_helpers.js')
 const p = require('./properties.js')
@@ -12,7 +13,9 @@ var mode = 'buildings';
 
 var ground_plane_uuid = undefined;
 var scene_geoms = {};
-var clickable_uuids = [];
+var clickable_objects = [];
+
+var mouse = new THREE.Vector2(), INTERSECTED;
 
 // UI ===================================================================
 
@@ -20,6 +23,21 @@ $("#infectedRooms").click(function() {set_mode('rooms')} );
 $("#viewPlan").click(viewPlan);
 $("#viewBuildings").click(function() {set_mode('buildings')} );
 $("#viewPeople").click(function() {set_mode('people')} );
+
+
+// LISTENERS ===================================================================
+
+document.addEventListener('mousemove', on_document_mouse_move, false);
+
+
+
+function on_document_mouse_move(event) {
+	event.preventDefault();
+	mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+	mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+}
+
+
 
 // AJAX ===================================================================
 
@@ -90,6 +108,10 @@ function init_three_js(){
 	var ground_plane = h3.get_ground_plane();
 	scene.add(ground_plane);
 	ground_plane_uuid = ground_plane.uuid;
+
+	// Add Raycaster
+	raycaster = new THREE.Raycaster();
+
 }
 
 
@@ -106,7 +128,7 @@ function animate(){
 function render(){
 	/* Required three.js render function */
 
-	renderer.render( scene, camera );
+	check_raycaster();
 }
 
 
@@ -116,6 +138,38 @@ function on_window_resize() {
 	camera.aspect = window.innerWidth / window.innerHeight;
 	camera.updateProjectionMatrix();
 	renderer.setSize( window.innerWidth, window.innerHeight );
+}
+
+
+// RAYCASTER ===================================================================
+
+function check_raycaster() {
+	/* Cheks if mouse is hovering over any clickable scene objects, and changes color */
+
+	raycaster.setFromCamera(mouse, camera);
+	var intersects = raycaster.intersectObjects(clickable_objects);
+
+	if (intersects.length > 0 ) {
+		if (INTERSECTED != intersects[0].object) {
+			if(INTERSECTED) {
+				INTERSECTED.material.emissive.setHex(INTERSECTED.currentHex);
+			}
+			INTERSECTED = intersects[0].object;
+			INTERSECTED.currentHex = INTERSECTED.material.emissive.getHex();
+			INTERSECTED.material.emissive.setHex( p.colors.selected_hex );
+
+			var hovered_object = scene_geoms[INTERSECTED.uuid];
+			console.log(hovered_object);
+
+		}
+	} else {
+		if (INTERSECTED) {
+			INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex )
+		};
+		INTERSECTED = null;
+	}
+
+	renderer.render(scene, camera);
 }
 
 
@@ -146,7 +200,7 @@ function set_clickable_objects(m) {
 	/* Given a mode, populats the list of uuids of objects that the mouse can interact with */
 
 	// Reset the list of interactive objects
-	clickable_uuids = [];
+	var clickable_uuids = [];
 
 	// Iterate through each object in the scene and add to the clickable list, if specified
 	$.each(scene_geoms, (k,v) => {
@@ -154,7 +208,24 @@ function set_clickable_objects(m) {
 			clickable_uuids.push(k)
 		}
 	})
+
+	temp_children = [];
+
+	// Iterate through each scene object and ad it to the clickable list
+	// $.each(clickable_uuids, (k,v) => {
+	// 	const object = scene.getObjectByProperty('uuid', v);
+	// 	clickable_objects.push(object);
+	// })
+	$.each(scene.children, (k,v) => {
+		if (clickable_uuids.includes(v.uuid)) {
+			temp_children.push(v);
+		}
+	})
+
+	clickable_objects = temp_children;
+
 }
+
 
 function toggle_ground_plane(m) {
 	/* Turns the ground plane on or off per mode's specs */
@@ -168,6 +239,7 @@ function toggle_ground_plane(m) {
 	}
 }
 
+
 function update_level_opacity(m) {
 	/* Given a mode's specifications, update level objects' opacity */
 
@@ -177,6 +249,7 @@ function update_level_opacity(m) {
 		}
 	})
 }
+
 
 function set_mode(mode){
 	/* Perform actions to change the mode before new objects are fetched from the backend */
