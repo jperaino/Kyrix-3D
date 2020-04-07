@@ -11,7 +11,7 @@ modes['buildings'] = {
 	color_scale: null,
 	room_filter: null, 
 	level_opacity: 1,
-	current_levels: [],
+	default_level: 999,
 	room_condition: null
 
 }
@@ -25,7 +25,7 @@ modes['rooms'] = {
 	color_scale: null,
 	room_filter: null, 
 	level_opacity: 0.075,
-	current_levels: [],
+	default_level: 8,
 	room_condition: "level='8'"
 
 }

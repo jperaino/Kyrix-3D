@@ -9,7 +9,8 @@ const modes = require('./modes.js')
 
 // PROPERTIES ===================================================================
 
-var mode = 'buildings';
+var cur_mode = 'buildings';
+var cur_level = undefined;
 
 var ground_plane_uuid = undefined;
 var scene_geoms = {};
@@ -27,15 +28,33 @@ $("#viewPeople").click(function() {set_mode('people')} );
 
 // LISTENERS ===================================================================
 
+// Add document event listeners
 document.addEventListener('mousemove', on_document_mouse_move, false);
+// document.addEventListener('onkeydown', on_document_key_down, true);
+document.onkeydown = on_document_key_down;
 
 
-
+// Event listener methods
 function on_document_mouse_move(event) {
+	/* Updates mouse position data on mouse move */
+
 	event.preventDefault();
 	mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
 	mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
 }
+
+function on_document_key_down(event) {
+	/* Performs actions on key clicks */
+	console.log(event);
+
+	if(event['key'] === "ArrowUp") {
+		set_mode(cur_mode, level=cur_level+1);
+	} else if (event['key'] === "ArrowDown") {
+		set_mode(cur_mode, level=cur_level-1);
+	}
+
+}
+
 
 
 
@@ -79,9 +98,24 @@ function load_geoms(kind, condition='') {
         	}
 
         	// Continue the mode change routine
-        	set_mode_pt_2(mode);
+        	set_mode_pt_2();
         }
 	})
+}
+
+
+function destroy_all_rooms() {
+
+	$.each(scene_geoms, (k,v) => {
+		if(v['kind'] == 'Room') {
+			const object = scene.getObjectByProperty('uuid', k);
+			object.geometry.dispose();
+			object.material.dispose();
+			scene.remove(object);
+			delete scene_geoms[k];
+		}
+	})
+
 }
 
 
@@ -111,7 +145,6 @@ function init_three_js(){
 
 	// Add Raycaster
 	raycaster = new THREE.Raycaster();
-
 }
 
 
@@ -212,10 +245,6 @@ function set_clickable_objects(m) {
 	temp_children = [];
 
 	// Iterate through each scene object and ad it to the clickable list
-	// $.each(clickable_uuids, (k,v) => {
-	// 	const object = scene.getObjectByProperty('uuid', v);
-	// 	clickable_objects.push(object);
-	// })
 	$.each(scene.children, (k,v) => {
 		if (clickable_uuids.includes(v.uuid)) {
 			temp_children.push(v);
@@ -245,30 +274,66 @@ function update_level_opacity(m) {
 
 	$.each(scene_geoms, (k,v) => {
 		if (v.kind === 'Level') {
-			tweenOpacity(v, m.level_opacity, 400)
+	
+			if (v.level > cur_level - 1) {
+				// Hide any objects over current level
+				visible = false;
+				new_opacity = 0;
+				cast_shadow = true;
+			} else {
+				// Lower opacity of any visible levels
+				tweenOpacity(v, 0, 400);
+				visible = true;
+				new_opacity = m.level_opacity;
+				cast_shadow = false;
+			}
+			
+			const object = scene.getObjectByProperty('uuid', k);
+			tweenOpacity(v, new_opacity, 400);
+			object.visible = visible;
+			object.castShadow = cast_shadow;
 		}
 	})
 }
 
 
-function set_mode(mode){
+function set_mode(mode, new_level=null){
 	/* Perform actions to change the mode before new objects are fetched from the backend */
 	console.log(`Updating mode to: ${mode}`)
 
-	m = modes[mode];
+	// Update the current stored mode and get mode specs
+	cur_mode = mode;
+	m = modes[cur_mode];
+
+	// Update the current level
+	if (new_level === null) {
+		cur_level = m.default_level;
+	} else {
+		cur_level = new_level;
+	}
+
+	// Update scene opacities
 	toggle_ground_plane(m);
 	update_level_opacity(m);
 
+	// Destroy any rooms, if they are in the scene
+	destroy_all_rooms();
+
+	// Load new objects and/or set clickable objects
 	if (m.room_condition !== null) {
-		load_geoms('Room', condition=m.room_condition)
+		// load_geoms('Room', condition=m.room_condition)
+		load_geoms('Room', condition=`level='${cur_level}'`)
+	} else {
+		set_mode_pt_2()
 	}
 }
 
 
-function set_mode_pt_2(mode){
+function set_mode_pt_2(){
 	/* Perform actions to change the mode after new objects are fetched from the backend */
 
-	m = modes[mode];
+	console.log(`Continuing to set mode to ${cur_mode}`)
+	m = modes[cur_mode];
 	set_clickable_objects(m);
 
 }
@@ -283,9 +348,8 @@ function init() {
 
 	window.addEventListener( 'resize', on_window_resize, false );
 
-	set_mode(mode);
+	set_mode(cur_mode);
 	
-
 }
 
 // MAIN ===================================================================
