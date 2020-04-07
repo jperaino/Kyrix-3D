@@ -5,7 +5,7 @@ const p = require('./properties.js')
 
 // METHODS ===================================================================
 
-function mesh_from_geom(geom) {
+function mesh_from_geom(m, geom) {
 	/* Given a geom, returns a mesh to be added to the scene */
 
 	// Get the raw vertices
@@ -20,7 +20,8 @@ function mesh_from_geom(geom) {
 	var shape = new THREE.Shape(vertices);
 	shape.autoClose = true;
 
-	color = p.colors.background;
+	// color = p.colors.background;
+	color = color_from_metric(m, geom);
 
 	var depth = 110;
 	var material = new THREE.MeshPhongMaterial( { color: color, specular: 0x111111, shininess: 0, flatShading: false, transparent: true, opacity: 0} );
@@ -39,6 +40,19 @@ function mesh_from_geom(geom) {
 
 	return mesh;
 
+}
+
+
+function color_from_metric(m, geom) {
+	/* Given a geom and a model, returns a color based on that model's metric */
+
+	if (m.color_metric !== null) {
+		normalized_metric = geom[m.color_metric] / m.color_metric_max;
+	} else {
+		normalized_metric = 0;
+	}
+	
+	return d3.interpolateOrRd(normalized_metric);
 }
 
 
@@ -153,7 +167,7 @@ var p3 = {
 	get_scene: function(){ return get_scene() },
 	get_elements: function() { return get_elements() },
 	get_ground_plane: function() { return get_ground_plane() },
-	mesh_from_geom: function(geom) { return mesh_from_geom(geom) }
+	mesh_from_geom: function(m, geom) { return mesh_from_geom(m, geom) }
 };
 
 

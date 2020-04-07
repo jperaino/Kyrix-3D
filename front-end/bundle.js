@@ -83,10 +83,9 @@ function on_document_key_down(event) {
 
 
 
-
 // AJAX ===================================================================
 
-function load_geoms(kind, condition='') {
+function load_geoms(m, kind, condition='') {
 	/* Given predicates, fetches geoms from the backend, constructs objects, and loads them into the scene */
 
 	// Form predicate
@@ -108,7 +107,7 @@ function load_geoms(kind, condition='') {
         	for (var i = 0; i < x.length; i++) {
 
         		geom = d.get_geom(x[i]);
-        		mesh = h3.mesh_from_geom(geom);
+        		mesh = h3.mesh_from_geom(m, geom);
 
         		if (kind === 'Room') {
         			depth = 120;
@@ -295,6 +294,24 @@ function toggle_ground_plane(m) {
 }
 
 
+function update_current_level(m, new_level) {
+	/* Updates the global room level */
+
+	if (new_level === null) {
+		cur_level = m.default_level;
+	} else {
+		cur_level = new_level;
+	}
+}
+
+
+function update_subtitle(m) {
+	/* Updates the page's subtitle */
+	$('#level-label').text(m.subtitle);
+
+
+}
+
 function update_level_opacity(m) {
 	/* Given a mode's specifications, update level objects' opacity */
 
@@ -332,11 +349,7 @@ function set_mode(mode, new_level=null){
 	m = modes[cur_mode];
 
 	// Update the current level
-	if (new_level === null) {
-		cur_level = m.default_level;
-	} else {
-		cur_level = new_level;
-	}
+	update_current_level(m, new_level);
 
 	// Update scene opacities
 	toggle_ground_plane(m);
@@ -345,10 +358,12 @@ function set_mode(mode, new_level=null){
 	// Destroy any rooms, if they are in the scene
 	destroy_all_rooms();
 
+	// Update the page's subtitle
+	update_subtitle(m);
+
 	// Load new objects and/or set clickable objects
 	if (m.room_condition !== null) {
-		// load_geoms('Room', condition=m.room_condition)
-		load_geoms('Room', condition=`level='${cur_level}'`)
+		load_geoms(m, 'Room', condition=`level='${cur_level}'`)
 	} else {
 		set_mode_pt_2()
 	}
@@ -369,8 +384,10 @@ function set_mode_pt_2(){
 
 function init() {
 
+	m = modes[cur_mode];
+
 	init_three_js();
-	load_geoms('Level');
+	load_geoms(m, 'Level');
 
 	window.addEventListener( 'resize', on_window_resize, false );
 
@@ -398,8 +415,9 @@ modes['buildings'] = {
 	room_filter: null, 
 	level_opacity: 1,
 	default_level: 999,
-	room_condition: null
-
+	room_condition: null,
+	color_metric: null,
+	subtitle: 'Viewing all buildings'
 }
 
 
@@ -412,7 +430,10 @@ modes['rooms'] = {
 	room_filter: null, 
 	level_opacity: 0.075,
 	default_level: 8,
-	room_condition: "level='8'"
+	room_condition: "level='8'",
+	color_metric: 'infections',
+	color_metric_max: 6,
+	subtitle: 'Viewing rooms'
 
 }
 
@@ -447,7 +468,7 @@ const p = require('./properties.js')
 
 // METHODS ===================================================================
 
-function mesh_from_geom(geom) {
+function mesh_from_geom(m, geom) {
 	/* Given a geom, returns a mesh to be added to the scene */
 
 	// Get the raw vertices
@@ -462,7 +483,8 @@ function mesh_from_geom(geom) {
 	var shape = new THREE.Shape(vertices);
 	shape.autoClose = true;
 
-	color = p.colors.background;
+	// color = p.colors.background;
+	color = color_from_metric(m, geom);
 
 	var depth = 110;
 	var material = new THREE.MeshPhongMaterial( { color: color, specular: 0x111111, shininess: 0, flatShading: false, transparent: true, opacity: 0} );
@@ -481,6 +503,19 @@ function mesh_from_geom(geom) {
 
 	return mesh;
 
+}
+
+
+function color_from_metric(m, geom) {
+	/* Given a geom and a model, returns a color based on that model's metric */
+
+	if (m.color_metric !== null) {
+		normalized_metric = geom[m.color_metric] / m.color_metric_max;
+	} else {
+		normalized_metric = 0;
+	}
+	
+	return d3.interpolateOrRd(normalized_metric);
 }
 
 
@@ -595,7 +630,7 @@ var p3 = {
 	get_scene: function(){ return get_scene() },
 	get_elements: function() { return get_elements() },
 	get_ground_plane: function() { return get_ground_plane() },
-	mesh_from_geom: function(geom) { return mesh_from_geom(geom) }
+	mesh_from_geom: function(m, geom) { return mesh_from_geom(m, geom) }
 };
 
 
