@@ -1,4 +1,14 @@
 
+
+function predicate_from_mode(m) {
+
+	
+	
+}
+
+
+
+
 function get_geom(x) {
 
 	var geom = {

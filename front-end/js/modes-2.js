@@ -41,7 +41,7 @@ function get_infected_levels(){
 function whoops(t) {
 
 	console.log("here")
-	// console.log(t);
+	console.log(t);
 	return ("whooooops")
 }
 
@@ -152,7 +152,8 @@ var infected_room_filter = {
 	level: null,
 	room_name: null,
 	building: null,
-	infections: ">'0'"
+	infections: ">'0'",
+	
 }
 
 

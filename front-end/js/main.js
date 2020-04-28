@@ -5,6 +5,7 @@ const d = require('./data_helpers.js')
 const p = require('./properties.js')
 const h3 = require('./three_helpers.js')
 const modes = require('./modes.js')
+const views = require('./views.js')
 
 
 // PROPERTIES ===================================================================
@@ -20,10 +21,19 @@ var mouse = new THREE.Vector2(), INTERSECTED;
 
 // UI ===================================================================
 
-$("#infectedRooms").click(function() {set_mode('rooms')} );
-$("#viewPlan").click(viewPlan);
-$("#viewBuildings").click(function() {set_mode('buildings')} );
-$("#viewPeople").click(function() {set_mode('people')} );
+function add_buttons(modes) {
+	/* Adds buttons to the UI to toggle modes */
+
+	// Iterate over every mode in modes
+	$.each(modes, (k,v) => {
+
+		// Add the button to the UI
+		$('#button-row').append(`<button type="button" class="btn btn-primary btn-sm" id=${k}>${v.button_label}</button> `)
+
+		// Add on click function
+		$(`#${k}`).click(function() {set_mode(k)});
+	})
+}
 
 
 // LISTENERS ===================================================================
@@ -360,12 +370,16 @@ function init() {
 
 	m = modes[cur_mode];
 
+	add_buttons(modes);
+
 	init_three_js();
 	load_geoms(m, 'Level');
 
 	window.addEventListener( 'resize', on_window_resize, false );
 
 	set_mode(cur_mode);
+
+	console.log(modes['buildings']['results'])
 	
 }
 
