@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>3D Kyrix - Simple Frontend</title>
+		<link rel="stylesheet" href='static/css/main.css'>
+		<style>
+			body { margin: 0; }
+			canvas { display: block; }
+		</style>
+		<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+		<script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+		<script src="https://cdn.jsdelivr.net/npm/gpu.js@2.0.0-rc.19/dist/gpu-browser.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.17.0/dist/jquery.validate.min.js"></script>
+        <script src="https://d3js.org/d3.v5.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/css-element-queries@1.2.1/src/ElementQueries.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/css-element-queries@1.2.1/src/ResizeSensor.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-legend/2.25.6/d3-legend.min.js"></script>
+        <script src="/js/globalVar.js"></script>
+
+	</head>
+
+	<body>
+		<div id="debug-info">
+			<h2>Massachusetts General Hospital</h2>
+			<p id=level-label>Viewing all levels</p>
+			
+			<button type="button" class="btn btn-dark btn-sm" id="viewBuildings">Buildings</button>
+			<button type="button" class="btn btn-primary btn-sm" id="viewPlan">Plan</button>
+			<button type="button" class="btn btn-primary btn-sm" id="infectedRooms">Infected Rooms</button>
+			<button type="button" class="btn btn-primary btn-sm" id="viewPeople">People</button>
+
+
+		</div>	
+
+<!-- 		<div id="room-table-div">
+			<h3>Rooms</h3>
+			<table class="table table-sm">
+			  <thead>
+			    <tr>
+			      <th scope="col">Room</th>
+			      <th scope="col">Building</th>
+			      <th scope="col">Level</th>
+			      <th scope="col">Count</th>
+			    </tr>
+			  </thead>
+			  <tbody id='room_body'>
+			  </tbody>
+			</table>
+		</div> -->
+
+
+		<div id="people">
+			<h3>People</h3>
+			<table class="table table-sm">
+			  <thead>
+			    <tr>
+			      <th scope="col">ID</th>
+			      <th scope="col">Role</th>
+			      <th scope="col">Infected?</th>
+			      <!-- <th scope="col">Count</th> -->
+			    </tr>
+			  </thead>
+			  <tbody id='people_body'>
+			  </tbody>
+			</table>
+		</div>
+
+
+		<div id="highlighted-info"></div>
+
+		<div id="dummy-container"></div>
+
+<!-- 
+		<div id="tooltip">Hello</div> -->
+
+<!-- 		<div id="bottom-alert">
+			<p id=camera-pos>Camera: None</p>
+			<p id=camera-look>Looking at:</p>
+		</div> -->
+
+		<div id="three-container"></div>
+
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.15.0/d3.js"></script>
+ 		<script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/16.3.5/Tween.min.js"></script>
+
+		<!-- Bootstrap Dependencies -->
+		<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
+		<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
+		
+		<script src="bundle.js"></script>
+
+
+	</body>
+
+
+</html>	
+
+
+
+
+
+

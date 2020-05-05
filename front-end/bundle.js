@@ -5,6 +5,13 @@ function Canvas3d(id) {
 	// assign fields
 	this.id = String(id);
 	this.layers = [];
+
+	// Geometry
+	this.ground_plane = false;
+
+	// UI
+	this.title = '';
+	this.subtitle = '';
 }
 
 
@@ -21,8 +28,55 @@ module.exports = {
 	Canvas3d
 }
 },{}],2:[function(require,module,exports){
+function Layer3d(id) {
+	// assign fields
+	this.id = String(id);
 
+	// Render params
+	this.renderer = null;
+
+	//
+	this.clickable = false;
+	this.level_filter = null;
+	this.room_filter = null;
+	this.building_filter = null;
+	this.level_opacity = 1;
+}
+
+// add render to a layer
+function setRenderer(renderer) {
+	this.renderer = renderer
+}
+
+
+// add functions to prototype
+Layer3d.prototype.setRenderer = setRenderer;
+
+// exports
+module.exports = {
+	Layer3d
+}
 },{}],3:[function(require,module,exports){
+const p = require('../js/properties.js')
+
+function Renderer3d(id) {
+	
+	// assign fields
+	this.id = String(id);
+	this.opacity = 1;
+	this.clickable = true;
+	this.color_scale = null;
+	this.color_metric = null;
+	this.color = p.unselected_hex;
+
+}
+
+
+// exports
+module.exports = {
+	Renderer3d
+}
+},{"../js/properties.js":6}],4:[function(require,module,exports){
 
 
 function predicate_from_mode(m) {
@@ -57,14 +111,14 @@ var d = {
 
 
 module.exports = d
-},{}],4:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 const d3 = require('d3');
 const THREE = require('three');
 
 const d = require('./data_helpers.js')
 const p = require('./properties.js')
 const h3 = require('./three_helpers.js')
-const modes = require('./modes.js')
+// const modes = require('./modes.js')
 const views = require('./views.js')
 
 
@@ -81,17 +135,21 @@ var mouse = new THREE.Vector2(), INTERSECTED;
 
 // UI ===================================================================
 
-function add_buttons(modes) {
-	/* Adds buttons to the UI to toggle modes */
+function add_buttons(views) {
+	/* Adds buttons to the UI to toggle views */
+	// console.log(views)
+	// console.log(views[0])
 
-	// Iterate over every mode in modes
-	$.each(modes, (k,v) => {
+	// Iterate over every mode in views
+	$.each(views['Views'], (k, v) => {
+
+		console.log(k, v)
 
 		// Add the button to the UI
-		$('#button-row').append(`<button type="button" class="btn btn-primary btn-sm" id=${k}>${v.button_label}</button> `)
+		$('#button-row').append(`<button type="button" class="btn btn-primary btn-sm" id=${v.id}>${v.title}</button> `)
 
 		// Add on click function
-		$(`#${k}`).click(function() {set_mode(k)});
+		$(`#${v.id}`).click(function() {set_mode(v.id)});
 	})
 }
 
@@ -156,7 +214,6 @@ function load_geoms(m, kind, condition='') {
         		if (kind === 'Room') {
         			depth = 120;
         			mesh.material.transparent = false;
-        			// mesh.receiveShadow = false;
         		}
 
         		geom.uuid = mesh.uuid;
@@ -428,18 +485,24 @@ function set_mode_pt_2(){
 
 function init() {
 
-	m = modes[cur_mode];
+	// console.log(views)
 
-	add_buttons(modes);
+	add_buttons(views)
+
+	// m = modes[cur_mode];
+
+	// add_buttons(modes);
 
 	init_three_js();
-	load_geoms(m, 'Level');
+	// load_geoms(m, 'Level');
 
-	window.addEventListener( 'resize', on_window_resize, false );
+	// window.addEventListener( 'resize', on_window_resize, false );
 
-	set_mode(cur_mode);
+	// set_mode(cur_mode);
 
-	console.log(modes['buildings']['results'])
+	// console.log(modes['buildings']['results'])
+
+	// console.log(views)
 	
 }
 
@@ -448,179 +511,7 @@ function init() {
 init();
 animate();
 
-},{"./data_helpers.js":3,"./modes.js":5,"./properties.js":6,"./three_helpers.js":7,"./views.js":8,"d3":40,"three":42}],5:[function(require,module,exports){
-
-modes = {}
-
-
-
-// Calls ===================================================================
-
-
-function get_levels(){
-
-	$.ajax({
-		type: "GET",
-		url: "/canvas",
-		data: `id=mgh&predicate0=(kind='Level')`,
-		success: function(data) {
-			x = JSON.parse(data).staticData[0]
-
-			for(var i = 0; i < x.length; i++) {
-
-
-
-			}
-		}
-	})
-}
-
-
-function get_infected_levels(){
-
-	$.ajax({
-		type: "GET",
-		url: "/canvas",
-		data: `id=mgh&predicate0=(kind='Room')`,
-		success: function(data) {
-
-		}
-	})
-}
-
-
-function whoops(t) {
-
-	console.log("here")
-	// console.log(t);
-	return ("whooooops")
-}
-
-
-function parse_levels(){
-	x = JSON.parse(data).staticData[0]
-
-	
-}
-
-
-
-function get_filtered_rooms(){
-
-
-	levels = get_data(`id=mgh&predicate0=(kind='Level')`, (d) => {return d})
-
-	console.log(levels)
-
-}
-
-
-
-// Backend Fetch ===================================================================
-
-function get_data(predicate, callback) {
-
-	$.ajax({
-		type: "GET",
-		url: "/canvas",
-		data: predicate,
-		success: function(data) {
-			callback(data);
-			// callback("hello hello hello");
-		}
-	})
-}
-
-// function get_level_data()
-
-// Specifications ===================================================================
-
-// Create the initial mode
-modes['buildings'] = {
-
-	button_label: 'All Buildings',
-	predicate: `id=mgh&predicate0=(kind='Level')`,
-	clickable_kind: 'Level',
-	ground_plane_on: true,
-	visible_divs: [],
-	color_scale: null,
-	room_filter: null, 
-	level_opacity: 1,
-	default_level: 999,
-	room_condition: null,
-	color_metric: null,
-	subtitle: 'Viewing all buildings',
-	results: get_data(`id=mgh&predicate0=(kind='Level')`, whoops)
-}
-
-// Create a mode to view infections across all levels
-b_alt = modes['buildings'];
-b_alt['button_label'] = 'All Buidlings - Infections'
-b_alt['subtitle'] = 'Viewing all buildings with infections'
-// b_alt['level_scores'] = get_level_scores();
-
-modes['buildings_infections_by_level'] = b_alt
-
-
-// Create a mode to view each level with infected rooms
-modes['rooms_by_level_infections'] = {
-
-	button_label: 'Rooms by Level - Infections',
-	clickable_kind: 'Room',
-	ground_plane_on: false,
-	visible_divs: [],
-	color_scale: null,
-	room_filter: null, 
-	level_opacity: 0.075,
-	default_level: 8,
-	room_condition: "level='8'",
-	color_metric: 'infections',
-	color_metric_max: 6,
-	subtitle: 'Viewing rooms'
-
-}
-
-modes['infected_rooms'] = {
-
-	button_label: 'All Infected Rooms',
-	clickable_kind: 'Room',
-	ground_plane_on: false,
-	visible_divs: [],
-	color_scale: null,
-	room_filter: null, 
-	level_opacity: 0.075,
-	default_level: 9999,
-	room_condition: "infections>'0'", //"level='8'",
-	color_metric: 'infections',
-	color_metric_max: 6,
-	subtitle: 'Viewing rooms'
-
-}
-
-
-
-var infected_room_filter = {
-	level: null,
-	room_name: null,
-	building: null,
-	infections: ">'0'"
-}
-
-
-
-module.exports = modes
-
-
-
-
-
-
-
-
-
-
-
-},{}],6:[function(require,module,exports){
+},{"./data_helpers.js":4,"./properties.js":6,"./three_helpers.js":7,"./views.js":8,"d3":40,"three":42}],6:[function(require,module,exports){
 
 var colors = {
 	'background': 0xffffff,
@@ -819,12 +710,48 @@ module.exports = p3
 },{"./properties.js":6,"three":42,"three-orbitcontrols":41}],8:[function(require,module,exports){
 const Canvas3d = require("../3D_src/Canvas3d").Canvas3d;
 const Layer3d = require("../3D_src/Layer3d").Layer3d;
+const Renderer3d = require("../3D_src/Renderer3d").Renderer3d;
 
+// Initialize canvas list
+Views = [];
+
+
+// CANVAS 1 - ALL BUILDINGS -------------------------------------------------
+
+// Initialize canvas
 var allBuildings = new Canvas3d("allBuildings");
-allBuildings.temp = "ok"
+allBuildings.title = "All buildings";
+allBuildings.subtitle = "Showing all buildings and levels."
 
-console.log(allBuildings)
-},{"../3D_src/Canvas3d":1,"../3D_src/Layer3d":2}],9:[function(require,module,exports){
+// Initialize renderer
+var neutral = new Renderer3d("neutral");
+
+// Initialize layer
+var allLevels = new Layer3d("allLevels");
+allLevels.clickable = true;
+allLevels.setRenderer(neutral);
+
+// Add canvas to the project
+Views.push(allBuildings)
+
+
+// CANVAS 2 - ALL BUILDINGS -------------------------------------------------
+
+// Initialize canvas
+var roomsByLevel = new Canvas3d("roomsByLevel");
+roomsByLevel.title = "Rooms by Level"
+
+// Initialize renderer
+
+
+// Add canvas to the project
+Views.push(roomsByLevel);
+
+
+module.exports = {
+	Views
+}
+},{"../3D_src/Canvas3d":1,"../3D_src/Layer3d":2,"../3D_src/Renderer3d":3}],9:[function(require,module,exports){
 // https://d3js.org/d3-array/ v1.2.4 Copyright 2018 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -71736,4 +71663,4 @@ THREE.MapControls.prototype.constructor = THREE.MapControls;
 
 })));
 
-},{}]},{},[4]);
+},{}]},{},[5]);

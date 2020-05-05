@@ -4,7 +4,7 @@ const THREE = require('three');
 const d = require('./data_helpers.js')
 const p = require('./properties.js')
 const h3 = require('./three_helpers.js')
-const modes = require('./modes.js')
+// const modes = require('./modes.js')
 const views = require('./views.js')
 
 
@@ -21,17 +21,21 @@ var mouse = new THREE.Vector2(), INTERSECTED;
 
 // UI ===================================================================
 
-function add_buttons(modes) {
-	/* Adds buttons to the UI to toggle modes */
+function add_buttons(views) {
+	/* Adds buttons to the UI to toggle views */
+	// console.log(views)
+	// console.log(views[0])
 
-	// Iterate over every mode in modes
-	$.each(modes, (k,v) => {
+	// Iterate over every mode in views
+	$.each(views['Views'], (k, v) => {
+
+		console.log(k, v)
 
 		// Add the button to the UI
-		$('#button-row').append(`<button type="button" class="btn btn-primary btn-sm" id=${k}>${v.button_label}</button> `)
+		$('#button-row').append(`<button type="button" class="btn btn-primary btn-sm" id=${v.id}>${v.title}</button> `)
 
 		// Add on click function
-		$(`#${k}`).click(function() {set_mode(k)});
+		$(`#${v.id}`).click(function() {set_mode(v.id)});
 	})
 }
 
@@ -96,7 +100,6 @@ function load_geoms(m, kind, condition='') {
         		if (kind === 'Room') {
         			depth = 120;
         			mesh.material.transparent = false;
-        			// mesh.receiveShadow = false;
         		}
 
         		geom.uuid = mesh.uuid;
@@ -368,18 +371,24 @@ function set_mode_pt_2(){
 
 function init() {
 
-	m = modes[cur_mode];
+	// console.log(views)
 
-	add_buttons(modes);
+	add_buttons(views)
+
+	// m = modes[cur_mode];
+
+	// add_buttons(modes);
 
 	init_three_js();
-	load_geoms(m, 'Level');
+	// load_geoms(m, 'Level');
 
-	window.addEventListener( 'resize', on_window_resize, false );
+	// window.addEventListener( 'resize', on_window_resize, false );
 
-	set_mode(cur_mode);
+	// set_mode(cur_mode);
 
-	console.log(modes['buildings']['results'])
+	// console.log(modes['buildings']['results'])
+
+	// console.log(views)
 	
 }
 

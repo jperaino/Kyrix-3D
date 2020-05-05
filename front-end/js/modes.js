@@ -87,19 +87,19 @@ function get_data(predicate, callback) {
 // Create the initial mode
 modes['buildings'] = {
 
-	button_label: 'All Buildings',
-	predicate: `id=mgh&predicate0=(kind='Level')`,
-	clickable_kind: 'Level',
-	ground_plane_on: true,
-	visible_divs: [],
-	color_scale: null,
-	room_filter: null, 
-	level_opacity: 1,
-	default_level: 999,
-	room_condition: null,
-	color_metric: null,
-	subtitle: 'Viewing all buildings',
-	results: get_data(`id=mgh&predicate0=(kind='Level')`, whoops)
+	button_label: 'All Buildings', // UI
+	predicate: `id=mgh&predicate0=(kind='Level')`, // Layer
+	clickable_kind: 'Level', // Layer
+	ground_plane_on: true, // Layer
+	visible_divs: [], // UI
+	color_scale: null, // Rendering
+	room_filter: null, // Layer
+	level_opacity: 1, // Layer
+	default_level: 999, // Layer
+	room_condition: null, // 
+	color_metric: null, // Rendering
+	subtitle: 'Viewing all buildings', // UI
+	results: get_data(`id=mgh&predicate0=(kind='Level')`, whoops) // Layer
 }
 
 // Create a mode to view infections across all levels

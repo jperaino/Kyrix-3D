@@ -4,6 +4,13 @@ function Canvas3d(id) {
 	// assign fields
 	this.id = String(id);
 	this.layers = [];
+
+	// Geometry
+	this.ground_plane = false;
+
+	// UI
+	this.title = '';
+	this.subtitle = '';
 }
 
 
