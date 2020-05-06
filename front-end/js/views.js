@@ -6,33 +6,57 @@ const Renderer3d = require("../3D_src/Renderer3d").Renderer3d;
 Views = [];
 
 
+// Initialize renderers
+var neutral = new Renderer3d("neutral");
+neutral.depth = 110;
+
+var transparent = new Renderer3d("neutral");
+transparent.depth = 110;
+transparent.opacity = 0.075;
+
+
 // CANVAS 1 - ALL BUILDINGS -------------------------------------------------
 
 // Initialize canvas
 var allBuildings = new Canvas3d("allBuildings");
 allBuildings.title = "All buildings";
 allBuildings.subtitle = "Showing all buildings and levels."
-
-// Initialize renderer
-var neutral = new Renderer3d("neutral");
+allBuildings.ground_plane = true;
 
 // Initialize layer
 var allLevels = new Layer3d("allLevels");
 allLevels.clickable = true;
+allLevels.kind_filter = 'Level'
 allLevels.setRenderer(neutral);
+
+allBuildings.addLayer(allLevels);
 
 // Add canvas to the project
 Views.push(allBuildings)
 
 
-// CANVAS 2 - ALL BUILDINGS -------------------------------------------------
+// CANVAS 2 - ROOMS BY LEVEL -------------------------------------------------
 
 // Initialize canvas
 var roomsByLevel = new Canvas3d("roomsByLevel");
 roomsByLevel.title = "Rooms by Level"
 
-// Initialize renderer
 
+// Initialize room layer
+var singleFloorRooms = new Layer3d("singleFloorRooms");
+singleFloorRooms.clickable = true;
+singleFloorRooms.kind_filter = 'Room';
+singleFloorRooms.level_filter = 'cur_level';
+singleFloorRooms.setRenderer(neutral);
+roomsByLevel.addLayer(singleFloorRooms);
+
+// Initialize transparent floor layer
+var lowerLevels = new Layer3d("lowerLevels")
+lowerLevels.clickable = false;
+lowerLevels.kind_filter = 'Level'
+lowerLevels.level_filter = 'levels_below';
+lowerLevels.setRenderer(transparent);
+roomsByLevel.addLayer(lowerLevels);
 
 // Add canvas to the project
 Views.push(roomsByLevel);

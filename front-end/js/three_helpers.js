@@ -5,8 +5,11 @@ const p = require('./properties.js')
 
 // METHODS ===================================================================
 
-function mesh_from_geom(m, geom) {
+function mesh_from_geom(layer, geom) {
 	/* Given a geom, returns a mesh to be added to the scene */
+
+	renderer = layer.renderer
+	// console.log(renderer)
 
 	// Get the raw vertices
 	vertices = [];
@@ -20,11 +23,19 @@ function mesh_from_geom(m, geom) {
 	var shape = new THREE.Shape(vertices);
 	shape.autoClose = true;
 
-	// color = p.colors.background;
-	color = color_from_metric(m, geom);
+	// color = color_from_metric(layer, geom);
+	color = renderer.color
 
-	var depth = 110;
-	var material = new THREE.MeshPhongMaterial( { color: color, specular: 0x111111, shininess: 0, flatShading: false, transparent: true, opacity: 0} );
+	var depth = renderer.depth
+	var transparent = false;
+	var opacity = renderer.opacity;
+	
+	if (opacity !== 1){
+		transparent = true;
+	}
+
+
+	var material = new THREE.MeshPhongMaterial( { color: color, specular: 0x111111, shininess: 0, flatShading: false, transparent: transparent, opacity: opacity} );
 
 	var extrude_settings = {depth: depth, bevelEnabled: false};
 	var geometry = new THREE.ExtrudeGeometry(shape, extrude_settings);
@@ -66,7 +77,7 @@ function get_scene () {
 	scene.background = p.colors.background;
 
 	// Add Fog
-	scene.fog = new THREE.Fog(p.colors.background, 5000, 50000);
+	// scene.fog = new THREE.Fog(p.colors.background, 5000, 50000);
 
 	// Add Lights
 	var light = new THREE.DirectionalLight( p.colors.light );
