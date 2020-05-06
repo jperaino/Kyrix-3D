@@ -60,6 +60,8 @@ module.exports = {
 },{}],3:[function(require,module,exports){
 const p = require('../js/properties.js')
 
+render_fns = {}
+
 function Renderer3d(id) {
 	
 	// assign fields
@@ -67,16 +69,30 @@ function Renderer3d(id) {
 	this.opacity = 1;
 	this.color_scale = null;
 	this.color_metric = null;
-	// this.color = p.unselected_hex;
+	this.color_metric_max = 6;
 	this.color = 'white';
 	this.depth = 120;
+	this.render_fn = null;
 
 }
 
 
+var infection_count_render = function(renderer, geom) {
+
+		normalized_metric = geom[renderer.color_metric] / renderer.color_metric_max;
+		color = d3.interpolateOrRd(normalized_metric)
+
+		return color
+	}
+
+
+render_fns['infection_count_render'] = infection_count_render;
+  
 // exports
 module.exports = {
-	Renderer3d
+	Renderer3d,
+	// infection_count_render
+	render_fns
 }
 },{"../js/properties.js":6}],4:[function(require,module,exports){
 
@@ -520,13 +536,17 @@ function mesh_from_geom(layer, geom) {
 	var shape = new THREE.Shape(vertices);
 	shape.autoClose = true;
 
-	// color = color_from_metric(layer, geom);
-	color = renderer.color
+	color = 'white'
+	// color = 'white'
+
+	if (renderer.render_fn !== null) {
+		color = renderer.render_fn(renderer, geom);	
+	}
 
 	var depth = renderer.depth
 	var transparent = false;
 	var opacity = renderer.opacity;
-	
+
 	if (opacity !== 1){
 		transparent = true;
 	}
@@ -551,17 +571,30 @@ function mesh_from_geom(layer, geom) {
 }
 
 
-function color_from_metric(m, geom) {
-	/* Given a geom and a model, returns a color based on that model's metric */
+// function get_color(renderer, geom){
+// 	color = 'white'
 
-	if (m.color_metric !== null) {
-		normalized_metric = geom[m.color_metric] / m.color_metric_max;
-	} else {
-		normalized_metric = 0;
-	}
+// 	if (renderer.color_metric !== null) {
+// 		normalized_metric = geom[renderer.color_metric] / renderer.color_metric_max;
+// 		color = d3.interpolateOrRd(normalized_metric)
+// 	} 
+
+// 	return color
+// }
+
+
+
+// function color_from_metric(m, geom) {
+// 	/* Given a geom and a model, returns a color based on that model's metric */
+
+// 	if (m.color_metric !== null) {
+// 		normalized_metric = geom[m.color_metric] / m.color_metric_max;
+// 	} else {
+// 		normalized_metric = 0;
+// 	}
 	
-	return d3.interpolateOrRd(normalized_metric);
-}
+// 	return d3.interpolateOrRd(normalized_metric);
+// }
 
 
 // PROPERTY METHODS ===================================================================
@@ -687,6 +720,7 @@ module.exports = p3
 const Canvas3d = require("../3D_src/Canvas3d").Canvas3d;
 const Layer3d = require("../3D_src/Layer3d").Layer3d;
 const Renderer3d = require("../3D_src/Renderer3d").Renderer3d;
+const render_fns = require("../3D_src/Renderer3d").render_fns;
 
 // Initialize canvas list
 Views = [];
@@ -699,6 +733,11 @@ neutral.depth = 110;
 var transparent = new Renderer3d("neutral");
 transparent.depth = 110;
 transparent.opacity = 0.075;
+
+var byInfections = new Renderer3d("byInfections");
+byInfections.depth = 120;
+byInfections.color_metric = 'infections';
+byInfections.render_fn = render_fns['infection_count_render'];
 
 
 // CANVAS 1 - ALL BUILDINGS -------------------------------------------------
@@ -733,7 +772,7 @@ var singleFloorRooms = new Layer3d("singleFloorRooms");
 singleFloorRooms.clickable = true;
 singleFloorRooms.kind_filter = 'Room';
 singleFloorRooms.level_filter = 'cur_level';
-singleFloorRooms.setRenderer(neutral);
+singleFloorRooms.setRenderer(byInfections);
 roomsByLevel.addLayer(singleFloorRooms);
 
 // Initialize transparent floor layer

@@ -23,13 +23,17 @@ function mesh_from_geom(layer, geom) {
 	var shape = new THREE.Shape(vertices);
 	shape.autoClose = true;
 
-	// color = color_from_metric(layer, geom);
-	color = renderer.color
+	color = 'white'
+	// color = 'white'
+
+	if (renderer.render_fn !== null) {
+		color = renderer.render_fn(renderer, geom);	
+	}
 
 	var depth = renderer.depth
 	var transparent = false;
 	var opacity = renderer.opacity;
-	
+
 	if (opacity !== 1){
 		transparent = true;
 	}
@@ -54,17 +58,30 @@ function mesh_from_geom(layer, geom) {
 }
 
 
-function color_from_metric(m, geom) {
-	/* Given a geom and a model, returns a color based on that model's metric */
+// function get_color(renderer, geom){
+// 	color = 'white'
 
-	if (m.color_metric !== null) {
-		normalized_metric = geom[m.color_metric] / m.color_metric_max;
-	} else {
-		normalized_metric = 0;
-	}
+// 	if (renderer.color_metric !== null) {
+// 		normalized_metric = geom[renderer.color_metric] / renderer.color_metric_max;
+// 		color = d3.interpolateOrRd(normalized_metric)
+// 	} 
+
+// 	return color
+// }
+
+
+
+// function color_from_metric(m, geom) {
+// 	/* Given a geom and a model, returns a color based on that model's metric */
+
+// 	if (m.color_metric !== null) {
+// 		normalized_metric = geom[m.color_metric] / m.color_metric_max;
+// 	} else {
+// 		normalized_metric = 0;
+// 	}
 	
-	return d3.interpolateOrRd(normalized_metric);
-}
+// 	return d3.interpolateOrRd(normalized_metric);
+// }
 
 
 // PROPERTY METHODS ===================================================================

@@ -19,7 +19,6 @@ function setRenderer(renderer) {
 	this.renderer = renderer
 }
 
-
 // add functions to prototype
 Layer3d.prototype.setRenderer = setRenderer;
 

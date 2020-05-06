@@ -1,6 +1,7 @@
 const Canvas3d = require("../3D_src/Canvas3d").Canvas3d;
 const Layer3d = require("../3D_src/Layer3d").Layer3d;
 const Renderer3d = require("../3D_src/Renderer3d").Renderer3d;
+const render_fns = require("../3D_src/Renderer3d").render_fns;
 
 // Initialize canvas list
 Views = [];
@@ -13,6 +14,11 @@ neutral.depth = 110;
 var transparent = new Renderer3d("neutral");
 transparent.depth = 110;
 transparent.opacity = 0.075;
+
+var byInfections = new Renderer3d("byInfections");
+byInfections.depth = 120;
+byInfections.color_metric = 'infections';
+byInfections.render_fn = render_fns['infection_count_render'];
 
 
 // CANVAS 1 - ALL BUILDINGS -------------------------------------------------
@@ -47,7 +53,7 @@ var singleFloorRooms = new Layer3d("singleFloorRooms");
 singleFloorRooms.clickable = true;
 singleFloorRooms.kind_filter = 'Room';
 singleFloorRooms.level_filter = 'cur_level';
-singleFloorRooms.setRenderer(neutral);
+singleFloorRooms.setRenderer(byInfections);
 roomsByLevel.addLayer(singleFloorRooms);
 
 // Initialize transparent floor layer
