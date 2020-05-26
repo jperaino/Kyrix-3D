@@ -5,6 +5,9 @@ function Layer3d(id) {
 	// Render params
 	this.renderer = null;
 
+	// Jump params
+	this.jump = null;
+
 	//
 	this.clickable = false;
 	this.level_filter = null;
@@ -19,8 +22,14 @@ function setRenderer(renderer) {
 	this.renderer = renderer
 }
 
+// add jump to a layer
+function setJump(jump) {
+	this.jump = jump;
+}
+
 // add functions to prototype
 Layer3d.prototype.setRenderer = setRenderer;
+Layer3d.prototype.setJump = setJump;
 
 // exports
 module.exports = {

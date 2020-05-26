@@ -1,4 +1,4 @@
-const THREE = require('three');
+const THREE = require('three'); 
 const OrbitControls = require('three-orbitcontrols');
 const p = require('./properties.js')
 

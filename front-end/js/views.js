@@ -1,6 +1,7 @@
 const Canvas3d = require("../3D_src/Canvas3d").Canvas3d;
 const Layer3d = require("../3D_src/Layer3d").Layer3d;
 const Renderer3d = require("../3D_src/Renderer3d").Renderer3d;
+const Jump3d = require("../3D_src/Jump3d").Jump3d;
 const render_fns = require("../3D_src/Renderer3d").render_fns;
 
 // Initialize canvas list
@@ -21,6 +22,10 @@ byInfections.color_metric = 'infections';
 byInfections.render_fn = render_fns['infection_count_render'];
 
 
+// Initialize jumps
+var typical_jump = new Jump3d("typical");
+
+
 // CANVAS 1 - ALL BUILDINGS -------------------------------------------------
 
 // Initialize canvas
@@ -34,6 +39,12 @@ var allLevels = new Layer3d("allLevels");
 allLevels.clickable = true;
 allLevels.kind_filter = 'Level'
 allLevels.setRenderer(neutral);
+
+
+// Add Jump
+var allToLevel = new Jump3d('allToLevel');
+allToLevel.nextCanvas = 'roomsByLevel'
+allLevels.setJump(allToLevel);
 
 allBuildings.addLayer(allLevels);
 
@@ -54,6 +65,8 @@ singleFloorRooms.clickable = true;
 singleFloorRooms.kind_filter = 'Room';
 singleFloorRooms.level_filter = 'cur_level';
 singleFloorRooms.setRenderer(byInfections);
+singleFloorRooms.setJump(typical_jump);
+
 roomsByLevel.addLayer(singleFloorRooms);
 
 // Initialize transparent floor layer
@@ -62,6 +75,8 @@ lowerLevels.clickable = false;
 lowerLevels.kind_filter = 'Level'
 lowerLevels.level_filter = 'levels_below';
 lowerLevels.setRenderer(transparent);
+lowerLevels.setJump(typical_jump);
+
 roomsByLevel.addLayer(lowerLevels);
 
 // Add canvas to the project

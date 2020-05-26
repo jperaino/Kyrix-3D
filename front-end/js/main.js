@@ -1,4 +1,4 @@
-const d3 = require('d3');
+const d3 = require('d3'); 
 const THREE = require('three');
 
 const d = require('./data_helpers.js')
@@ -28,8 +28,6 @@ function add_buttons(views) {
 	// Iterate over every mode in views
 	$.each(views, (k, v) => {
 
-		// console.log(k, v)
-
 		// Add the button to the UI
 		$('#button-row').append(`<button type="button" class="btn btn-primary btn-sm" id=${v.id}>${v.title}</button> `)
 
@@ -43,6 +41,9 @@ function add_buttons(views) {
 
 // Add document event listeners
 document.addEventListener('mousemove', on_document_mouse_move, false);
+document.addEventListener( 'mousedown', onDocumentMouseDown, false );
+document.addEventListener( 'click', onDocumentMouseClick, false);
+window.addEventListener( 'resize', on_window_resize, false );
 document.onkeydown = on_document_key_down;
 
 
@@ -68,6 +69,70 @@ function on_document_key_down(event) {
 		set_canvas(cur_mode)
 		// set_canvas(cur_mode, level=cur_level-1);
 	}
+}
+
+function onDocumentMouseDown(event){
+	/* Saves the identity of the object that the mouse was over when it is clicked
+	in order to verify that mouse click event is over same object. */
+	console.log("MOUSE DOWN!")
+
+	event.preventDefault();
+	raycaster.setFromCamera(mouse, camera);
+	var intersects = raycaster.intersectObjects(clickable_objects);
+
+	if (intersects.length > 0) {
+		INTERSECTED = intersects[0].object
+		mouse_down_intersected = INTERSECTED;
+	}
+}
+
+
+function onDocumentMouseClick(event){
+	/* Handles mouse click events for three.js raycasting */
+
+	console.log("CLICK!")
+
+	event.preventDefault();
+	raycaster.setFromCamera(mouse, camera);
+	var intersects = raycaster.intersectObjects(clickable_objects);
+
+	if (intersects.length > 0) {
+		INTERSECTED = intersects[0].object
+
+		// Check if intersected object is same one when mouse clicked down.
+		if (INTERSECTED === mouse_down_intersected) {
+
+			object = scene_geoms[INTERSECTED.uuid]
+			layer_id = object['layer'];
+
+			var cur_layer = null;
+
+			$.each(views[cur_mode]['layers'], (k, v) => {
+				if (v.id === layer_id) {
+					cur_layer = v;
+				}
+			});
+
+			jump = cur_layer.jump;
+			performJump(jump, object);
+
+		}
+	}
+}
+
+
+function performJump(jump, object) {
+
+	console.log("Jumping!");
+	console.log(jump);
+
+	if (jump.update_level) {
+		cur_level = object.level;
+		set_canvas(jump.nextCanvas);
+	}
+
+
+
 }
 
 
@@ -143,9 +208,9 @@ function check_raycaster() {
 			INTERSECTED.material.emissive.setHex( p.colors.selected_hex );
 
 			var hovered_object = scene_geoms[INTERSECTED.uuid];
-			console.log(hovered_object);
-
+			// console.log(hovered_object);
 		}
+
 	} else {
 		if (INTERSECTED) {
 			INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex )
@@ -198,6 +263,7 @@ function load_geoms(layer, predicate) {
 
         		geom.uuid = mesh.uuid;
         		scene_geoms[geom.uuid] = geom;
+        		scene_geoms[geom.uuid]['layer'] = layer.id;
         		scene.add(mesh);
 
         		// Track clickable objects

@@ -43,8 +43,10 @@ function add_buttons(views) {
 
 // Add document event listeners
 document.addEventListener('mousemove', on_document_mouse_move, false);
-// document.addEventListener('onkeydown', on_document_key_down, true);
+document.addEventListener( 'mousedown', onDocumentMouseDown, false );
+document.addEventListener( 'click', onDocumentMouseClick, false);
 document.onkeydown = on_document_key_down;
+
 
 
 // Event listener methods
@@ -67,6 +69,50 @@ function on_document_key_down(event) {
 	}
 
 }
+
+
+function onDocumentMouseDown(event){
+	/* Saves the identity of the object that the mouse was over when it is clicked
+	in order to verify that mouse click event is over same object. */
+	console.log("MOUSE DOWN!")
+
+	event.preventDefault();
+	raycaster.setFromCamera(mouse, camera);
+	var intersects = raycaster.intersectObjects(raycasting_targets);
+
+	if (intersects.length > 0) {
+		INTERSECTED = intersects[0].object
+		mouse_down_intersected = INTERSECTED;
+	}
+}
+
+
+function onDocumentMouseClick(event){
+	/* Handles mouse click events for three.js raycasting */
+
+	console.log("CLICK!")
+
+	event.preventDefault();
+	raycaster.setFromCamera(mouse, camera);
+	var intersects = raycaster.intersectObjects(raycasting_targets);
+
+	if (intersects.length > 0) {
+		INTERSECTED = intersects[0].object
+
+		// Check if intersected object is same one when mouse clicked down.
+		if (INTERSECTED === mouse_down_intersected) {
+
+			if (mode !== 'infections') {
+				onGeometryClick(INTERSECTED.uuid)
+			} else {
+				// onDetailRoomClick(INTERSECTED.uuid)
+				console.log("not infections")
+
+			}
+		}
+	}
+}
+
 
 
 

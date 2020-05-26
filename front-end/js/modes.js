@@ -16,9 +16,6 @@ function get_levels(){
 			x = JSON.parse(data).staticData[0]
 
 			for(var i = 0; i < x.length; i++) {
-
-
-
 			}
 		}
 	})
@@ -41,7 +38,7 @@ function get_infected_levels(){
 function whoops(t) {
 
 	console.log("here")
-	// console.log(t);
+	console.log(t);
 	return ("whooooops")
 }
 
