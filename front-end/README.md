@@ -6,6 +6,26 @@
 ### Typical Workflow
 A typical workflow in 3D Kyrix consists of defining a **scene** to which geometry can be added. A developer can add different types of geometry to the scene using **layers**. Layers use **transform functions** to query a database and select which geometry that should be added to the scene and **rendering functions** that prescribe how the geometry is added to the scene. For instance, a developer could create a layer consisting of only room geometries on the second level of a building, and specify a rendering function that displays these objects as white, opaque rooms within the scene. A developer may wish to present multiple layers at a time; **canvases** allow users to specify which layers are presented in the scene. **Jumps** can be added to any layer and specify which canvas the frontend will present if a user clicks on an object.
 
+## Getting Started:
+- Go to the Kyrix main directory and run:
+```sudo ./run-kyrix.sh```
+
+- Then compile:
+```cd compiler/examples/mgh```
+```./compile.sh mgh.js```
+
+- Then go back to the main directory and build:
+```./run-kyrix.sh --build```
+
+- After making changes to the frontend, send it to docker. You may need to install browserify
+```./sync.sh```
+
+### Data:
+- Make sure to load the datas into a table named ```geoms``` in a database named ```mgh```:
+```./docker-scripts/load-csv.sh csv/mgh_all_200308.csv --dbname mgh --tablename geoms```
+
+## API
+
 #### Scenes
 Scenes are a new abstraction in Kyrix3D that create a persistent envrionment for navigating 3D geometry between jumps. In the current implementation, scenes are specified using the three.js 3D library. Developers can add camera controls to a scene to define how a user zooms, pans, and navigates. Developers can also control the scene's visual appearance by adding elements like lighting and fog. 
 
@@ -74,20 +94,14 @@ Jumps can be added to a layer and specify the canvas to view when an object is c
 
 A developer can define a jump and add it to a layer in js/views.js. Layer prototypes are defined in 3D_src/Jump3d.js.
 
-## Getting Started:
-- Go to the Kyrix main directory and run:
-```sudo ./run-kyrix.sh```
+```javascript
+// Initialize jump
+var allToLevel = new Jump3d('allToLevel');
 
-- Then compile:
-```cd compiler/examples/mgh```
-```./compile.sh mgh.js```
+// Set the canvas to jump to
+allToLevel.nextCanvas = 'roomsByLevel'
 
-- Then go back to the main directory and build:
-```./run-kyrix.sh --build```
+// Add the jump to a layer
+allLevels.setJump(allLevels);
+```
 
-- After making changes to the frontend, send it to docker. You may need to install browserify
-```./sync.sh```
-
-### Data:
-- Make sure to load the datas into a table named ```geoms``` in a database named ```mgh```:
-```./docker-scripts/load-csv.sh csv/mgh_all_200308.csv --dbname mgh --tablename geoms```
