@@ -83,6 +83,31 @@ roomsByLevel.addLayer(lowerLevels);
 Views.push(roomsByLevel);
 
 
+// CANVAS 3 - INFECTED ROOMS -------------------------------------------------
+var infectedRooms = new Canvas3d('infectedRooms');
+infectedRooms.title = "Infected Rooms";
+
+// Initialize room layer
+var allInfectedRooms = new Layer3d("allInfectedRooms");
+allInfectedRooms.clickable = true;
+allInfectedRooms.kind_filter = 'Room';
+allInfectedRooms.room_filter = `TO_NUMBER(infections, '9999.99')>0`;
+allInfectedRooms.setRenderer(byInfections);
+allInfectedRooms.setJump(typical_jump);
+
+infectedRooms.addLayer(allInfectedRooms);
+
+// Initialize transparent floor layer
+var allLevelsTranslucent = new Layer3d("allLevelsTranslucent");
+allLevelsTranslucent.clickable = false;
+allLevelsTranslucent.kind_filter = 'Level'
+allLevelsTranslucent.setRenderer(transparent);
+
+infectedRooms.addLayer(allLevelsTranslucent);
+
+// Add canvas to the project
+Views.push(infectedRooms);
+
 module.exports = {
 	Views
 }

@@ -163,15 +163,14 @@ const h3 = require('./three_helpers.js')
 var views = require('./views.js')
 
 
-
 // PROPERTIES ===================================================================
 var cur_mode = 'allBuildings';
 var cur_level = 8;
 
 var ground_plane_uuid = undefined;
 var scene_geoms = {};
-clickable_objects = [];
-clickable_uuids = [];
+var clickable_objects = [];
+var clickable_uuids = [];
 
 var mouse = new THREE.Vector2(), INTERSECTED;
 
@@ -186,7 +185,6 @@ function add_buttons(views) {
 
 		// Add the button to the UI
 		$('#button-row').append(`<button type="button" class="btn btn-primary btn-sm" id=${v.id}>${v.title}</button> `)
-
 		// Add on click function
 		$(`#${v.id}`).click(function() {set_canvas(v.id)});
 	})
@@ -212,25 +210,24 @@ function on_document_mouse_move(event) {
 	mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
 }
 
+
 function on_document_key_down(event) {
-	/* Performs actions on key clicks */
+	/* Updates current level and refreshes geometry on arrow click */
 	console.log(event);
 
 	if(event['key'] === "ArrowUp") {
 		cur_level+=1
-		// set_canvas(cur_mode, level=cur_level+1);
 		set_canvas(cur_mode)
 	} else if (event['key'] === "ArrowDown") {
 		cur_level-=1
 		set_canvas(cur_mode)
-		// set_canvas(cur_mode, level=cur_level-1);
 	}
 }
+
 
 function onDocumentMouseDown(event){
 	/* Saves the identity of the object that the mouse was over when it is clicked
 	in order to verify that mouse click event is over same object. */
-	console.log("MOUSE DOWN!")
 
 	event.preventDefault();
 	raycaster.setFromCamera(mouse, camera);
@@ -246,8 +243,6 @@ function onDocumentMouseDown(event){
 function onDocumentMouseClick(event){
 	/* Handles mouse click events for three.js raycasting */
 
-	console.log("CLICK!")
-
 	event.preventDefault();
 	raycaster.setFromCamera(mouse, camera);
 	var intersects = raycaster.intersectObjects(clickable_objects);
@@ -258,39 +253,26 @@ function onDocumentMouseClick(event){
 		// Check if intersected object is same one when mouse clicked down.
 		if (INTERSECTED === mouse_down_intersected) {
 
+			// Get the scene object
 			object = scene_geoms[INTERSECTED.uuid]
+			console.log(object);
+
+			// Select the object's layer data
 			layer_id = object['layer'];
-
 			var cur_layer = null;
-
 			$.each(views[cur_mode]['layers'], (k, v) => {
 				if (v.id === layer_id) {
 					cur_layer = v;
 				}
 			});
 
+			// Perform the jump
 			jump = cur_layer.jump;
 			performJump(jump, object);
 
 		}
 	}
 }
-
-
-function performJump(jump, object) {
-
-	console.log("Jumping!");
-	console.log(jump);
-
-	if (jump.update_level) {
-		cur_level = object.level;
-		set_canvas(jump.nextCanvas);
-	}
-
-
-
-}
-
 
 
 // THREE.JS ===================================================================
@@ -340,7 +322,7 @@ function render(){
 
 
 function on_window_resize() {
-	/* Update rendera and camera on window resize */
+	/* Update renderer and camera on window resize */
 
 	camera.aspect = window.innerWidth / window.innerHeight;
 	camera.updateProjectionMatrix();
@@ -349,7 +331,7 @@ function on_window_resize() {
 
 
 function check_raycaster() {
-	/* Cheks if mouse is hovering over any clickable scene objects, and changes color */
+	/* Checks if mouse is hovering over any clickable scene objects, and changes color */
 
 	raycaster.setFromCamera(mouse, camera);
 	var intersects = raycaster.intersectObjects(clickable_objects);
@@ -364,9 +346,7 @@ function check_raycaster() {
 			INTERSECTED.material.emissive.setHex( p.colors.selected_hex );
 
 			var hovered_object = scene_geoms[INTERSECTED.uuid];
-			// console.log(hovered_object);
 		}
-
 	} else {
 		if (INTERSECTED) {
 			INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex )
@@ -378,11 +358,11 @@ function check_raycaster() {
 }
 
 
-
-
 // MAIN HELPERS ===================================================================
 
 function unpack_views(views) {
+	/* Structures data for view types */
+
 	x = views['Views']
 	views_dict = {}
 
@@ -394,14 +374,10 @@ function unpack_views(views) {
 }
 
 
-
-
 // MAIN ===================================================================
-
 
 function load_geoms(layer, predicate) {
 	/* Given predicates, fetches geoms from the backend, constructs objects, and loads them into the scene */
-	console.log(`Loading geoms for ${layer}`)
 
 	// Call backend
 	$.ajax({
@@ -411,9 +387,9 @@ function load_geoms(layer, predicate) {
         success: function(data) {
         	x = JSON.parse(data).staticData[0]
 
-
         	for (var i = 0; i < x.length; i++) {
 
+        		// Create object and add to scene
         		geom = d.get_geom(x[i]);
         		mesh = h3.mesh_from_geom(layer, geom);
 
@@ -424,11 +400,9 @@ function load_geoms(layer, predicate) {
 
         		// Track clickable objects
         		if (layer.clickable === true) {
-        			// console.log("layer is clickable")
         			clickable_uuids.push(geom.uuid)
         			clickable_objects.push(mesh)
         		}
-
         	}
         }
 	})
@@ -436,19 +410,18 @@ function load_geoms(layer, predicate) {
 
 
 function destroy_all_rooms() {
-	console.log("destroying everything")
+	/* Disposes all scene geoms and associated data from the scene */
 
+	// Iterate over every scene_geom
 	$.each(scene_geoms, (k,v) => {
-
 		const object = scene.getObjectByProperty('uuid', k);
 		object.geometry.dispose();
 		object.material.dispose();
 		scene.remove(object);
 		delete scene_geoms[k];
-		
 	})
-
 }
+
 
 function toggle_ground_plane(canvas) {
 	/* Turns the ground plane on or off per mode's specs */
@@ -464,10 +437,12 @@ function toggle_ground_plane(canvas) {
 
 
 function construct_predicate(layer) {
+	/* Given a layer, constructs a predicate */
 
+	// Initialize the conditions
 	var conditions = [`kind='${layer.kind_filter}'`]
-	console.log(cur_level)
 
+	// Add a condition to the predicate to filter by level, if specified
 	if (layer.level_filter === 'cur_level'){
 		conditions.push(`level='${cur_level}'`)
 	}
@@ -475,57 +450,51 @@ function construct_predicate(layer) {
 		conditions.push(`TO_NUMBER(level, '9999.99')<${cur_level}`)
 	}
 
-	var predicate = 'id=mgh&predicate0=('
+	// Add a condition to filter by room, if specified
+	if (layer.room_filter !== null) {
+		conditions.push(layer.room_filter);
+	};
 
+	// Initialize the predicate
+	var predicate = 'id=mgh&predicate0=('
 	var joiner = ''
 
+	// Add all conditions to the predicate
 	$.each(conditions, (k, condition) => {
 		predicate = predicate.concat(joiner)
 		predicate = predicate.concat(`(${condition})`)
 		joiner = 'and'
 	})
 
-	predicate = predicate.concat(')')
-
+	predicate = predicate.concat(')');
 	console.log(predicate)
-
-
-	// predicate = `id=mgh&predicate0=((kind='${kind}')and(${condition}))`
-	// var predicate = `id=mgh&predicate0=(kind='${layer.kind_filter}')`
-
-	// if (layer.level_filter === 'cur_level')
-
-
-
-	console.log(predicate)
-	return predicate
-
+	return predicate;
 }
 
 
 
 function add_layer_to_scene(layer) {
-
-	console.log("adding layer to scene")
+	/* Given a layer, constructs a predicate and loads geoemtry to the scene */
 
 	predicate = construct_predicate(layer)
-
 	load_geoms(layer, predicate)
-
 }
 
 
-
 function set_canvas(canvas_id){
-	console.log(`Changing canvas to: ${canvas}`)
+	/* Performs actions to update to a new canvas */
 
+	// Get canvas
 	cur_mode = canvas_id;
 	var canvas = views[canvas_id]
 
+	// Clear scene
 	destroy_all_rooms();
 
+	// Update ground plane
 	toggle_ground_plane(canvas);
 
+	// Update clickable objects
 	layers = canvas.layers;
 	clickable_uuids = [];
 	clickable_objects = [];
@@ -536,6 +505,19 @@ function set_canvas(canvas_id){
 		add_layer_to_scene(layer)
 	})
 }
+
+
+function performJump(jump, object) {
+	/* Performs the specified jump */
+
+	console.log(jump);
+
+	if (jump.update_level) {
+		cur_level = object.level;
+		set_canvas(jump.nextCanvas);
+	}
+}
+
 
 // TWEENS ===================================================================
 
@@ -853,7 +835,6 @@ allLevels.setRenderer(neutral);
 // Add Jump
 var allToLevel = new Jump3d('allToLevel');
 allToLevel.nextCanvas = 'roomsByLevel'
-
 allLevels.setJump(allToLevel);
 
 allBuildings.addLayer(allLevels);
@@ -892,6 +873,31 @@ roomsByLevel.addLayer(lowerLevels);
 // Add canvas to the project
 Views.push(roomsByLevel);
 
+
+// CANVAS 3 - INFECTED ROOMS -------------------------------------------------
+var infectedRooms = new Canvas3d('infectedRooms');
+infectedRooms.title = "Infected Rooms";
+
+// Initialize room layer
+var allInfectedRooms = new Layer3d("allInfectedRooms");
+allInfectedRooms.clickable = true;
+allInfectedRooms.kind_filter = 'Room';
+allInfectedRooms.room_filter = `TO_NUMBER(infections, '9999.99')>0`;
+allInfectedRooms.setRenderer(byInfections);
+allInfectedRooms.setJump(typical_jump);
+
+infectedRooms.addLayer(allInfectedRooms);
+
+// Initialize transparent floor layer
+var allLevelsTranslucent = new Layer3d("allLevelsTranslucent");
+allLevelsTranslucent.clickable = false;
+allLevelsTranslucent.kind_filter = 'Level'
+allLevelsTranslucent.setRenderer(transparent);
+
+infectedRooms.addLayer(allLevelsTranslucent);
+
+// Add canvas to the project
+Views.push(infectedRooms);
 
 module.exports = {
 	Views
