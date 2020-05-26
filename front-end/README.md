@@ -14,8 +14,65 @@ A developer can adjust a scene by editing the file js/properties_three.js.
 #### Canvases
 In 3D Kyrix, canvases are used to declare which layers are visible in a scene. A typical canvas specification contains a list of layers to be rendered, along with any 2D user interface elements that should be presented, such as a title or subtitle. Unlike in 2D Kyrix, the scene persists when new canvases are called. This enables the user to stay oriented relative to the rest of the building as details are added or removed from the scene.
 
-A developer can define a canvas in js/views.js
+A developer can define a canvas in js/views.js. Canvas prototypes are defined in 3D_src/Canvas3d.js. A typical implementation in js/views.js may look like this:
 
+```javascript
+// Initialize canvas
+var allBuildings = new Canvas3d("allBuildings");
+
+// Add a title and subtitle to be displayed on the page
+allBuildings.title = "All buildings"; 
+allBuildings.subtitle = "Showing all buildings and levels."
+
+// Specify that the ground plane is visible
+allBuildings.ground_plane = true; 
+```
+
+#### Layers
+Each layer defines a set of geometric objects that should be added to a scene, along with specifications that define how the geometries should be visualized and how user can interact with those objects. In a typical implementation of an architectural visualization, there could be:
+
+1. A layer for rooms to allow users to interact with data associated with each room
+2. A layer for building envelopes to enable users to interact with aggregated data for each building or to provide visual context for the room layer.
+3. A layer for static contextual information like a surrounding site. 
+
+The developer specifies which geometries should be added to the scene by defining a data transform function for each layer. The developer specifies the appearance of objects on each layer with a rendering function. For instance, a developer could use a transform function to select only rooms that a certain patient has visited, and could then use a rendering function to color code those rooms based on the number of infections present in each room. A developer can also add a jump to the layer, which specifies which canvas loads when a user clicks on any object in the scene.
+
+A developer can define a layers and add them to canvases in js/views.js. Layer prototypes are defined in 3D_src/Layer3d.js.
+
+```javascript
+// Initialize layer
+var allLevels = new Layer3d("allLevels");
+
+// Specify that the objects on this layer are clickable
+allLevels.clickable = true;
+
+// Specify that the predicate should only select 'Level' objects
+allLevels.kind_filter = 'Level'
+
+// Add a renderer
+allLevels.setRenderer(neutral);
+
+// Add the layer to the canvas
+allBuildings.addLayer(allLevels);
+``` 
+
+#### Data transforms
+Data transforms define which data is retrieved from the backend for any given layer. Data transforms are defined by adjusting layer properties. For instance, setting `layer.level_filter = 'cur_level` tells the layer to construct a predicate where only objects on the scene's current level are selected. 
+
+#### Rendering functions
+Rendering functions control the appearance of geometric objects on each layer and define how they are added to the scene. The rendering function also controls the height of objects and whether or not users can interact with them. For instance, if the primary focus of a visualization is patient rooms, then the layer containing patient rooms could have a rendering function that displays the objects as opaque and white. An additional layer for building envelopes could also be included in the canvas, and its rendering function could specify that the objects have a lower opacity and should not interact with the mouse.
+
+A user may specify a color or color function for any layer. For instance, color may be applied along a gradient to visualize the number of infections present in each room.
+
+A developer can define a renderer and add them to a layer in js/views.js. Layer prototypes are defined in 3D_src/Renderer3d.js.
+
+#### Placement functions
+Placement functions are not used in the current implementation. Instead, the backend fetches data according to the transform function specified in a given layer.
+
+#### Jumps
+Jumps can be added to a layer and specify the canvas to view when an object is clicked, along with any associated transitions.
+
+A developer can define a jump and add it to a layer in js/views.js. Layer prototypes are defined in 3D_src/Jump3d.js.
 
 ## Getting Started:
 - Go to the Kyrix main directory and run:
