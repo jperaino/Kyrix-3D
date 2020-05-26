@@ -86,6 +86,20 @@ A user may specify a color or color function for any layer. For instance, color 
 
 A developer can define a renderer and add them to a layer in js/views.js. Layer prototypes are defined in 3D_src/Renderer3d.js.
 
+```javascript
+// Initialize rendering function
+var byInfections = new Renderer3d("byInfections");
+
+// Set geometry height
+byInfections.depth = 120;
+
+// Set the metric to be used in the color scale
+byInfections.color_metric = 'infections';
+
+// Set the function to be used to calculate the color (defined in Renderer3d.js)
+byInfections.render_fn = render_fns['infection_count_render'];
+```
+
 #### Placement functions
 Placement functions are not used in the current implementation. Instead, the backend fetches data according to the transform function specified in a given layer.
 
