@@ -1,8 +1,10 @@
 const Canvas3d = require("../3D_src/Canvas3d").Canvas3d;
 const Layer3d = require("../3D_src/Layer3d").Layer3d;
 const Renderer3d = require("../3D_src/Renderer3d").Renderer3d;
+const Transform3d = require("../3D_src/Transform3d").Transform3d;
 const Jump3d = require("../3D_src/Jump3d").Jump3d;
 const render_fns = require("../3D_src/Renderer3d").render_fns;
+const transform_fns = require("../3D_src/Transform3d").transform_fns;
 
 // Initialize canvas list
 Views = [];
@@ -91,7 +93,9 @@ infectedRooms.title = "Infected Rooms";
 var allInfectedRooms = new Layer3d("allInfectedRooms");
 allInfectedRooms.clickable = true;
 allInfectedRooms.kind_filter = 'Room';
-allInfectedRooms.room_filter = `TO_NUMBER(infections, '9999.99')>0`;
+// allInfectedRooms.transform_fn = transform_fns['get_infected_rooms']
+allInfectedRooms.transform_fn = 'get_infected_rooms';
+// allInfectedRooms.room_filter = `TO_NUMBER(infections, '9999.99')>0`;
 allInfectedRooms.setRenderer(byInfections);
 allInfectedRooms.setJump(typical_jump);
 

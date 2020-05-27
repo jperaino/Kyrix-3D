@@ -59,6 +59,8 @@ function Layer3d(id) {
 	this.building_filter = null;
 	this.level_opacity = 1;
 	this.kind_filter = null;
+
+	this.transform_fn = null;
 }
 
 // add render to a layer
@@ -107,10 +109,6 @@ var infection_count_render = function(renderer, geom) {
 	}
 
 
-
-
-
-
 render_fns['infection_count_render'] = infection_count_render;
   
 // exports
@@ -118,7 +116,59 @@ module.exports = {
 	Renderer3d,
 	render_fns
 }
-},{"../js/properties.js":7}],5:[function(require,module,exports){
+},{"../js/properties.js":8}],5:[function(require,module,exports){
+const p = require('../js/properties.js')
+
+transform_fns = {}
+
+function Transform3d(id) {
+	
+	// assign fields
+	this.id = String(id);
+
+}
+
+
+// var get_infected_rooms = function() {
+
+// 	console.log("getting_infected_rooms");
+// 	var predicate = "id=fake&predicate0="
+
+// 	$.ajax({
+//         type: "GET",
+//         url: "/canvas",
+//         data: predicate,
+//         success: function(data) {
+//         	x = JSON.parse(data).staticData[0]
+
+//     		var infected_rooms = new Set();
+
+//         	for (var i = 0; i < x.length; i++) {
+
+//         		// console.log(x[i]['room'])
+//         		infected_rooms.add(x[i]['room'])
+//         	}
+
+//         	infected_rooms = Array.from(infected_rooms)
+//         	console.log(`(${infected_rooms.join()})`)
+
+//         	// var next_predicate = "id=mgh&predicate0=((kind='Room')and(TO_NUMBER(level, '9999.99')<8))"
+//         	var next_predicate = "id=mgh&predicate0=((kind='Room'))"
+
+//         	temp_fn();
+//         }
+// 	})
+// }
+
+
+// transform_fns['get_infected_rooms'] = get_infected_rooms;
+  
+// exports
+module.exports = {
+	Transform3d,
+	// transform_fns
+}
+},{"../js/properties.js":8}],6:[function(require,module,exports){
 
 
 function predicate_from_mode(m) {
@@ -153,7 +203,7 @@ var d = {
 
 
 module.exports = d
-},{}],6:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
 const d3 = require('d3'); 
 const THREE = require('three');
 
@@ -375,6 +425,53 @@ function unpack_views(views) {
 
 
 // MAIN ===================================================================
+function temp_fn(){
+	get_infected_rooms();
+}
+
+
+var get_infected_rooms = function() {
+
+	console.log("getting_infected_rooms");
+	var predicate = "id=fake&predicate0="
+
+	$.ajax({
+        type: "GET",
+        url: "/canvas",
+        data: predicate,
+        success: function(data) {
+        	x = JSON.parse(data).staticData[0]
+
+    		var infected_rooms = new Set();
+
+        	for (var i = 0; i < x.length; i++) {
+
+        		// console.log(x[i]['room'])
+        		infected_rooms.add(x[i]['room'])
+        		var next_predicate = `id=mgh&predicate0=((kind='Room')and(room=${x[i]['room']}))`
+        		load_geoms(views.infectedRooms.layers[0], next_predicate);
+
+
+
+
+        	}
+
+        	// infected_rooms = Array.from(infected_rooms)
+        	// console.log(`(${infected_rooms.join()})`)
+
+        	// var next_predicate = "id=mgh&predicate0=((kind='Room')and(TO_NUMBER(level, '9999.99')<8))"
+        	// var next_predicate = `id=mgh&predicate0=((kind='Room')and(room='826'))`
+        	// var next_predicate = "id=mgh&predicate0=(kind='Room')"
+
+        	// console.log(views.infectedRooms.layers[0]);
+
+
+        	// load_geoms(views.infectedRooms.layers[0], next_predicate);
+        }
+	})
+}
+
+
 
 function load_geoms(layer, predicate) {
 	/* Given predicates, fetches geoms from the backend, constructs objects, and loads them into the scene */
@@ -475,9 +572,16 @@ function construct_predicate(layer) {
 
 function add_layer_to_scene(layer) {
 	/* Given a layer, constructs a predicate and loads geoemtry to the scene */
+	if (layer.transform_fn !== null) {
+		eval(layer.transform_fn)();
+		// predicate = layer.transform_fn();
+		// print(predicate);
+	} else {
+		predicate = construct_predicate(layer);
+		load_geoms(layer, predicate);
+	}
 
-	predicate = construct_predicate(layer)
-	load_geoms(layer, predicate)
+	
 }
 
 
@@ -564,7 +668,7 @@ function init() {
 
 init();
 animate();
-},{"./data_helpers.js":5,"./properties.js":7,"./three_helpers.js":8,"./views.js":9,"d3":41,"three":43}],7:[function(require,module,exports){
+},{"./data_helpers.js":6,"./properties.js":8,"./three_helpers.js":9,"./views.js":10,"d3":42,"three":44}],8:[function(require,module,exports){
 
 var colors = {
 	'background': 0xffffff,
@@ -582,7 +686,7 @@ var p = {
 
 
 module.exports = p
-},{}],8:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 const THREE = require('three'); 
 const OrbitControls = require('three-orbitcontrols');
 const p = require('./properties.js')
@@ -594,7 +698,6 @@ function mesh_from_geom(layer, geom) {
 	/* Given a geom, returns a mesh to be added to the scene */
 
 	renderer = layer.renderer
-	// console.log(renderer)
 
 	// Get the raw vertices
 	vertices = [];
@@ -609,7 +712,6 @@ function mesh_from_geom(layer, geom) {
 	shape.autoClose = true;
 
 	color = 'white'
-	// color = 'white'
 
 	if (renderer.render_fn !== null) {
 		color = renderer.render_fn(renderer, geom);	
@@ -641,32 +743,6 @@ function mesh_from_geom(layer, geom) {
 	return mesh;
 
 }
-
-
-// function get_color(renderer, geom){
-// 	color = 'white'
-
-// 	if (renderer.color_metric !== null) {
-// 		normalized_metric = geom[renderer.color_metric] / renderer.color_metric_max;
-// 		color = d3.interpolateOrRd(normalized_metric)
-// 	} 
-
-// 	return color
-// }
-
-
-
-// function color_from_metric(m, geom) {
-// 	/* Given a geom and a model, returns a color based on that model's metric */
-
-// 	if (m.color_metric !== null) {
-// 		normalized_metric = geom[m.color_metric] / m.color_metric_max;
-// 	} else {
-// 		normalized_metric = 0;
-// 	}
-	
-// 	return d3.interpolateOrRd(normalized_metric);
-// }
 
 
 // PROPERTY METHODS ===================================================================
@@ -788,12 +864,14 @@ module.exports = p3
 
 
 
-},{"./properties.js":7,"three":43,"three-orbitcontrols":42}],9:[function(require,module,exports){
+},{"./properties.js":8,"three":44,"three-orbitcontrols":43}],10:[function(require,module,exports){
 const Canvas3d = require("../3D_src/Canvas3d").Canvas3d;
 const Layer3d = require("../3D_src/Layer3d").Layer3d;
 const Renderer3d = require("../3D_src/Renderer3d").Renderer3d;
+const Transform3d = require("../3D_src/Transform3d").Transform3d;
 const Jump3d = require("../3D_src/Jump3d").Jump3d;
 const render_fns = require("../3D_src/Renderer3d").render_fns;
+const transform_fns = require("../3D_src/Transform3d").transform_fns;
 
 // Initialize canvas list
 Views = [];
@@ -882,7 +960,9 @@ infectedRooms.title = "Infected Rooms";
 var allInfectedRooms = new Layer3d("allInfectedRooms");
 allInfectedRooms.clickable = true;
 allInfectedRooms.kind_filter = 'Room';
-allInfectedRooms.room_filter = `TO_NUMBER(infections, '9999.99')>0`;
+// allInfectedRooms.transform_fn = transform_fns['get_infected_rooms']
+allInfectedRooms.transform_fn = 'get_infected_rooms';
+// allInfectedRooms.room_filter = `TO_NUMBER(infections, '9999.99')>0`;
 allInfectedRooms.setRenderer(byInfections);
 allInfectedRooms.setJump(typical_jump);
 
@@ -902,7 +982,7 @@ Views.push(infectedRooms);
 module.exports = {
 	Views
 }
-},{"../3D_src/Canvas3d":1,"../3D_src/Jump3d":2,"../3D_src/Layer3d":3,"../3D_src/Renderer3d":4}],10:[function(require,module,exports){
+},{"../3D_src/Canvas3d":1,"../3D_src/Jump3d":2,"../3D_src/Layer3d":3,"../3D_src/Renderer3d":4,"../3D_src/Transform3d":5}],11:[function(require,module,exports){
 // https://d3js.org/d3-array/ v1.2.4 Copyright 2018 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -1494,7 +1574,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{}],11:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 // https://d3js.org/d3-axis/ v1.0.12 Copyright 2018 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -1689,7 +1769,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{}],12:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 // https://d3js.org/d3-brush/ v1.1.5 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-dispatch'), require('d3-drag'), require('d3-interpolate'), require('d3-selection'), require('d3-transition')) :
@@ -2308,7 +2388,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-dispatch":17,"d3-drag":18,"d3-interpolate":26,"d3-selection":33,"d3-transition":38}],13:[function(require,module,exports){
+},{"d3-dispatch":18,"d3-drag":19,"d3-interpolate":27,"d3-selection":34,"d3-transition":39}],14:[function(require,module,exports){
 // https://d3js.org/d3-chord/ v1.0.6 Copyright 2018 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-array'), require('d3-path')) :
@@ -2540,7 +2620,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{"d3-array":10,"d3-path":27}],14:[function(require,module,exports){
+},{"d3-array":11,"d3-path":28}],15:[function(require,module,exports){
 // https://d3js.org/d3-collection/ v1.0.7 Copyright 2018 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -2759,7 +2839,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{}],15:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 // https://d3js.org/d3-color/ v1.4.0 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -3342,7 +3422,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],16:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 // https://d3js.org/d3-contour/ v1.3.2 Copyright 2018 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-array')) :
@@ -3775,7 +3855,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{"d3-array":10}],17:[function(require,module,exports){
+},{"d3-array":11}],18:[function(require,module,exports){
 // https://d3js.org/d3-dispatch/ v1.0.6 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -3872,7 +3952,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],18:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 // https://d3js.org/d3-drag/ v1.2.5 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-dispatch'), require('d3-selection')) :
@@ -4108,7 +4188,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-dispatch":17,"d3-selection":33}],19:[function(require,module,exports){
+},{"d3-dispatch":18,"d3-selection":34}],20:[function(require,module,exports){
 // https://d3js.org/d3-dsv/ v1.2.0 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -4343,7 +4423,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],20:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 // https://d3js.org/d3-ease/ v1.0.6 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -4604,7 +4684,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],21:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 // https://d3js.org/d3-fetch/ v1.1.2 Copyright 2018 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-dsv')) :
@@ -4708,7 +4788,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{"d3-dsv":19}],22:[function(require,module,exports){
+},{"d3-dsv":20}],23:[function(require,module,exports){
 // https://d3js.org/d3-force/ v1.2.1 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-quadtree'), require('d3-collection'), require('d3-dispatch'), require('d3-timer')) :
@@ -5378,7 +5458,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{"d3-collection":14,"d3-dispatch":17,"d3-quadtree":29,"d3-timer":37}],23:[function(require,module,exports){
+},{"d3-collection":15,"d3-dispatch":18,"d3-quadtree":30,"d3-timer":38}],24:[function(require,module,exports){
 // https://d3js.org/d3-format/ v1.4.3 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -5718,7 +5798,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],24:[function(require,module,exports){
+},{}],25:[function(require,module,exports){
 // https://d3js.org/d3-geo/ v1.11.9 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-array')) :
@@ -8846,7 +8926,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-array":10}],25:[function(require,module,exports){
+},{"d3-array":11}],26:[function(require,module,exports){
 // https://d3js.org/d3-hierarchy/ v1.1.9 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -10138,7 +10218,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],26:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 // https://d3js.org/d3-interpolate/ v1.4.0 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-color')) :
@@ -10733,7 +10813,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-color":15}],27:[function(require,module,exports){
+},{"d3-color":16}],28:[function(require,module,exports){
 // https://d3js.org/d3-path/ v1.0.9 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -10876,7 +10956,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],28:[function(require,module,exports){
+},{}],29:[function(require,module,exports){
 // https://d3js.org/d3-polygon/ v1.0.6 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -11028,7 +11108,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],29:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 // https://d3js.org/d3-quadtree/ v1.0.7 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -11449,7 +11529,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],30:[function(require,module,exports){
+},{}],31:[function(require,module,exports){
 // https://d3js.org/d3-random/ v1.1.2 Copyright 2018 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -11566,7 +11646,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{}],31:[function(require,module,exports){
+},{}],32:[function(require,module,exports){
 // https://d3js.org/d3-scale-chromatic/ v1.5.0 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-interpolate'), require('d3-color')) :
@@ -12089,7 +12169,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-color":15,"d3-interpolate":26}],32:[function(require,module,exports){
+},{"d3-color":16,"d3-interpolate":27}],33:[function(require,module,exports){
 // https://d3js.org/d3-scale/ v2.2.2 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-collection'), require('d3-array'), require('d3-interpolate'), require('d3-format'), require('d3-time'), require('d3-time-format')) :
@@ -13256,7 +13336,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{"d3-array":10,"d3-collection":14,"d3-format":23,"d3-interpolate":26,"d3-time":36,"d3-time-format":35}],33:[function(require,module,exports){
+},{"d3-array":11,"d3-collection":15,"d3-format":24,"d3-interpolate":27,"d3-time":37,"d3-time-format":36}],34:[function(require,module,exports){
 // https://d3js.org/d3-selection/ v1.4.1 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -14247,7 +14327,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],34:[function(require,module,exports){
+},{}],35:[function(require,module,exports){
 // https://d3js.org/d3-shape/ v1.3.7 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-path')) :
@@ -16198,7 +16278,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-path":27}],35:[function(require,module,exports){
+},{"d3-path":28}],36:[function(require,module,exports){
 // https://d3js.org/d3-time-format/ v2.2.3 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-time')) :
@@ -16907,7 +16987,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-time":36}],36:[function(require,module,exports){
+},{"d3-time":37}],37:[function(require,module,exports){
 // https://d3js.org/d3-time/ v1.1.0 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -17282,7 +17362,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],37:[function(require,module,exports){
+},{}],38:[function(require,module,exports){
 // https://d3js.org/d3-timer/ v1.0.10 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -17433,7 +17513,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],38:[function(require,module,exports){
+},{}],39:[function(require,module,exports){
 // https://d3js.org/d3-transition/ v1.3.2 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-selection'), require('d3-dispatch'), require('d3-timer'), require('d3-interpolate'), require('d3-color'), require('d3-ease')) :
@@ -18315,7 +18395,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-color":15,"d3-dispatch":17,"d3-ease":20,"d3-interpolate":26,"d3-selection":33,"d3-timer":37}],39:[function(require,module,exports){
+},{"d3-color":16,"d3-dispatch":18,"d3-ease":21,"d3-interpolate":27,"d3-selection":34,"d3-timer":38}],40:[function(require,module,exports){
 // https://d3js.org/d3-voronoi/ v1.1.4 Copyright 2018 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -19316,7 +19396,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{}],40:[function(require,module,exports){
+},{}],41:[function(require,module,exports){
 // https://d3js.org/d3-zoom/ v1.8.3 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-dispatch'), require('d3-drag'), require('d3-interpolate'), require('d3-selection'), require('d3-transition')) :
@@ -19815,7 +19895,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-dispatch":17,"d3-drag":18,"d3-interpolate":26,"d3-selection":33,"d3-transition":38}],41:[function(require,module,exports){
+},{"d3-dispatch":18,"d3-drag":19,"d3-interpolate":27,"d3-selection":34,"d3-transition":39}],42:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', { value: true });
@@ -20104,7 +20184,7 @@ Object.keys(d3Zoom).forEach(function (k) {
 });
 exports.version = version;
 
-},{"d3-array":10,"d3-axis":11,"d3-brush":12,"d3-chord":13,"d3-collection":14,"d3-color":15,"d3-contour":16,"d3-dispatch":17,"d3-drag":18,"d3-dsv":19,"d3-ease":20,"d3-fetch":21,"d3-force":22,"d3-format":23,"d3-geo":24,"d3-hierarchy":25,"d3-interpolate":26,"d3-path":27,"d3-polygon":28,"d3-quadtree":29,"d3-random":30,"d3-scale":32,"d3-scale-chromatic":31,"d3-selection":33,"d3-shape":34,"d3-time":36,"d3-time-format":35,"d3-timer":37,"d3-transition":38,"d3-voronoi":39,"d3-zoom":40}],42:[function(require,module,exports){
+},{"d3-array":11,"d3-axis":12,"d3-brush":13,"d3-chord":14,"d3-collection":15,"d3-color":16,"d3-contour":17,"d3-dispatch":18,"d3-drag":19,"d3-dsv":20,"d3-ease":21,"d3-fetch":22,"d3-force":23,"d3-format":24,"d3-geo":25,"d3-hierarchy":26,"d3-interpolate":27,"d3-path":28,"d3-polygon":29,"d3-quadtree":30,"d3-random":31,"d3-scale":33,"d3-scale-chromatic":32,"d3-selection":34,"d3-shape":35,"d3-time":37,"d3-time-format":36,"d3-timer":38,"d3-transition":39,"d3-voronoi":40,"d3-zoom":41}],43:[function(require,module,exports){
 /* three-orbitcontrols addendum */ var THREE = require('three');
 /**
  * @author qiao / https://github.com/qiao
@@ -21288,7 +21368,7 @@ THREE.MapControls.prototype = Object.create( THREE.EventDispatcher.prototype );
 THREE.MapControls.prototype.constructor = THREE.MapControls;
 /* three-orbitcontrols addendum */ module.exports = exports.default = THREE.OrbitControls;
 
-},{"three":43}],43:[function(require,module,exports){
+},{"three":44}],44:[function(require,module,exports){
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
 	typeof define === 'function' && define.amd ? define(['exports'], factory) :
@@ -71814,4 +71894,4 @@ THREE.MapControls.prototype.constructor = THREE.MapControls;
 
 })));
 
-},{}]},{},[6]);
+},{}]},{},[7]);

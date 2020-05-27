@@ -219,6 +219,52 @@ function unpack_views(views) {
 
 
 // MAIN ===================================================================
+function temp_fn(){
+	get_infected_rooms();
+}
+
+
+var get_infected_rooms = function() {
+
+	console.log("getting_infected_rooms");
+	var predicate = "id=fake&predicate0="
+
+	$.ajax({
+        type: "GET",
+        url: "/canvas",
+        data: predicate,
+        success: function(data) {
+        	x = JSON.parse(data).staticData[0]
+
+    		var infected_rooms = new Set();
+
+        	for (var i = 0; i < x.length; i++) {
+
+        		// console.log(x[i]['room'])
+        		infected_rooms.add(x[i]['room'])
+        
+
+
+
+
+        	}
+
+        	infected_rooms = Array.from(infected_rooms)
+        	console.log(`(${infected_rooms.join()})`)
+
+        	// var next_predicate = "id=mgh&predicate0=((kind='Room')and(TO_NUMBER(level, '9999.99')<8))"
+        	var next_predicate = `id=mgh&predicate0=((kind='Room')and(room='826'))`
+        	// var next_predicate = "id=mgh&predicate0=(kind='Room')"
+
+        	// console.log(views.infectedRooms.layers[0]);
+
+
+        	load_geoms(views.infectedRooms.layers[0], next_predicate);
+        }
+	})
+}
+
+
 
 function load_geoms(layer, predicate) {
 	/* Given predicates, fetches geoms from the backend, constructs objects, and loads them into the scene */
@@ -319,9 +365,16 @@ function construct_predicate(layer) {
 
 function add_layer_to_scene(layer) {
 	/* Given a layer, constructs a predicate and loads geoemtry to the scene */
+	if (layer.transform_fn !== null) {
+		eval(layer.transform_fn)();
+		// predicate = layer.transform_fn();
+		// print(predicate);
+	} else {
+		predicate = construct_predicate(layer);
+		load_geoms(layer, predicate);
+	}
 
-	predicate = construct_predicate(layer)
-	load_geoms(layer, predicate)
+	
 }
 
 

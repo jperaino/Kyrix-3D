@@ -9,7 +9,6 @@ function mesh_from_geom(layer, geom) {
 	/* Given a geom, returns a mesh to be added to the scene */
 
 	renderer = layer.renderer
-	// console.log(renderer)
 
 	// Get the raw vertices
 	vertices = [];
@@ -24,7 +23,6 @@ function mesh_from_geom(layer, geom) {
 	shape.autoClose = true;
 
 	color = 'white'
-	// color = 'white'
 
 	if (renderer.render_fn !== null) {
 		color = renderer.render_fn(renderer, geom);	
@@ -56,32 +54,6 @@ function mesh_from_geom(layer, geom) {
 	return mesh;
 
 }
-
-
-// function get_color(renderer, geom){
-// 	color = 'white'
-
-// 	if (renderer.color_metric !== null) {
-// 		normalized_metric = geom[renderer.color_metric] / renderer.color_metric_max;
-// 		color = d3.interpolateOrRd(normalized_metric)
-// 	} 
-
-// 	return color
-// }
-
-
-
-// function color_from_metric(m, geom) {
-// 	/* Given a geom and a model, returns a color based on that model's metric */
-
-// 	if (m.color_metric !== null) {
-// 		normalized_metric = geom[m.color_metric] / m.color_metric_max;
-// 	} else {
-// 		normalized_metric = 0;
-// 	}
-	
-// 	return d3.interpolateOrRd(normalized_metric);
-// }
 
 
 // PROPERTY METHODS ===================================================================

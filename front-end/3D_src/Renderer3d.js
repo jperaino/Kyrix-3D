@@ -25,10 +25,6 @@ var infection_count_render = function(renderer, geom) {
 	}
 
 
-
-
-
-
 render_fns['infection_count_render'] = infection_count_render;
   
 // exports

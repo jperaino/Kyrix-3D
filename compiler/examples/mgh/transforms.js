@@ -24,8 +24,18 @@ var peopleTransform = new Transform(
     true
 );
 
+var fakeTransform = new Transform(
+    "SELECT * FROM fakerooms;", 
+    "mgh",
+    "",
+    [],
+    true
+);
+
+
 module.exports = {
     mghTransform,
     activitiesTransform,
-    peopleTransform
+    peopleTransform,
+    fakeTransform
 };

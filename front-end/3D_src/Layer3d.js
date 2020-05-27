@@ -15,6 +15,8 @@ function Layer3d(id) {
 	this.building_filter = null;
 	this.level_opacity = 1;
 	this.kind_filter = null;
+
+	this.transform_fn = null;
 }
 
 // add render to a layer
