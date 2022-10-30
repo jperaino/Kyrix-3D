@@ -1,34 +1,22 @@
-
-
-function predicate_from_mode(m) {
-
-	
-	
-}
-
-
-
-
 function get_geom(x) {
+  var geom = {
+    level: x.level,
+    building: x.building,
+    room: x.room,
+    infections: x.infections,
+    kind: x.kind,
+    outline: x.outline,
+  };
 
-	var geom = {
-		level: x.level,
-		building: x.building,
-		room: x.room,
-		infections: x.infections,
-		kind: x.kind,
-		outline: x.outline,
-	}
-
-	return geom;
+  return geom;
 }
-
 
 // MODULE EXPORTS ===================================================================
 
 var d = {
-	get_geom: function(x){ return get_geom(x) },
+  get_geom: function (x) {
+    return get_geom(x);
+  },
 };
 
-
-module.exports = d
+module.exports = d;
